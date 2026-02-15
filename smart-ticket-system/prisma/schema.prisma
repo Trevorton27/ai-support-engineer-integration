@@ -1,0 +1,44 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// AI-specific models (new tables in shared database)
+model AISuggestion {
+  id               String   @id @default(cuid())
+  ticketId         String
+  type             String // 'analysis', 'next_steps', 'draft_reply'
+  content          Json
+  confidence       Float?
+  model            String // 'gpt-4o-mini', 'claude-3-5-sonnet', etc.
+  promptTokens     Int?
+  completionTokens Int?
+  createdAt        DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([createdAt])
+}
+
+model AIConversation {
+  id        String   @id @default(cuid())
+  ticketId  String
+  messages  Json // Array of { role, content }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ticketId])
+}
+
+model AICache {
+  id        String   @id @default(cuid())
+  key       String   @unique // Hash of input
+  value     Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}

@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  AGENT
+  VIEWER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum Channel {
+  EMAIL
+  CHAT
+  PHONE
+  WEB
+}
+
+enum AuthorType {
+  CUSTOMER
+  AGENT
+  SYSTEM
+}
+
+enum TicketEventType {
+  TICKET_CREATED
+  TICKET_UPDATED
+  MESSAGE_ADDED
+  STATUS_CHANGED
+  TAG_CHANGED
+  ATTACHMENT_ADDED
+}
+
+model Organization {
+  id         String   @id @default(cuid())
+  clerkOrgId String   @unique
+  name       String
+  createdAt  DateTime @default(now())
+  users      User[]
+  tickets    Ticket[]
+}
+
+model User {
+  id              String       @id @default(cuid())
+  clerkUserId     String       @unique
+  email           String
+  role            Role         @default(VIEWER)
+  orgId           String
+  org             Organization @relation(fields: [orgId], references: [id])
+  createdTickets  Ticket[]     @relation("CreatedBy")
+  assignedTickets Ticket[]     @relation("AssignedTo")
+  createdAt       DateTime     @default(now())
+}
+
+model Ticket {
+  id           String          @id @default(cuid())
+  title        String
+  description  String
+  status       TicketStatus    @default(OPEN)
+  priority     Priority        @default(MEDIUM)
+  channel      Channel?
+  customerName String          @default("Unknown")
+  customerOrg  String?
+  productArea  String          @default("General")
+  orgId        String
+  org          Organization    @relation(fields: [orgId], references: [id])
+  createdById  String
+  createdBy    User            @relation("CreatedBy", fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   User?           @relation("AssignedTo", fields: [assignedToId], references: [id])
+  messages     TicketMessage[]
+  attachments  Attachment[]
+  events       TicketEvent[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model TicketMessage {
+  id          String       @id @default(cuid())
+  ticketId    String
+  ticket      Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorType  AuthorType
+  authorName  String
+  content     String
+  attachments Attachment[]
+  createdAt   DateTime     @default(now())
+}
+
+model Attachment {
+  id        String         @id @default(cuid())
+  ticketId  String
+  ticket    Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  messageId String?
+  message   TicketMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  fileName  String
+  fileUrl   String
+  fileType  String
+  size      Int
+  checksum  String?
+  createdAt DateTime       @default(now())
+}
+
+model TicketEvent {
+  id               String          @id @default(cuid())
+  ticketId         String
+  ticket           Ticket          @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  type             TicketEventType
+  payload          Json
+  createdAt        DateTime        @default(now())
+  deliveredAt      DateTime?
+  deliveryAttempts Int             @default(0)
+  lastError        String?
+}
