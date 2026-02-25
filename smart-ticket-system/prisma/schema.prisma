@@ -7,20 +7,165 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Existing CRM enums
+enum Role {
+  ADMIN
+  AGENT
+  VIEWER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum Channel {
+  EMAIL
+  CHAT
+  PHONE
+  WEB
+}
+
+enum AuthorType {
+  CUSTOMER
+  AGENT
+  SYSTEM
+}
+
+enum TicketEventType {
+  TICKET_CREATED
+  TICKET_UPDATED
+  MESSAGE_ADDED
+  STATUS_CHANGED
+  TAG_CHANGED
+  ATTACHMENT_ADDED
+}
+
+// New AI enums
+enum AISuggestionState {
+  queued
+  running
+  success
+  error
+}
+
+enum AISuggestionKind {
+  analysis
+  next_steps
+  draft_reply
+  chat
+}
+
+// CRM models
+model Organization {
+  id         String   @id @default(cuid())
+  clerkOrgId String   @unique
+  name       String
+  createdAt  DateTime @default(now())
+  users      User[]
+  tickets    Ticket[]
+}
+
+model User {
+  id              String       @id @default(cuid())
+  clerkUserId     String       @unique
+  email           String
+  role            Role         @default(VIEWER)
+  orgId           String
+  org             Organization @relation(fields: [orgId], references: [id])
+  createdTickets  Ticket[]     @relation("CreatedBy")
+  assignedTickets Ticket[]     @relation("AssignedTo")
+  createdAt       DateTime     @default(now())
+}
+
+model Ticket {
+  id           String          @id @default(cuid())
+  title        String
+  description  String
+  status       TicketStatus    @default(OPEN)
+  priority     Priority        @default(MEDIUM)
+  channel      Channel?
+  customerName String          @default("Unknown")
+  customerOrg  String?
+  productArea  String          @default("General")
+  orgId        String
+  org          Organization    @relation(fields: [orgId], references: [id])
+  createdById  String
+  createdBy    User            @relation("CreatedBy", fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   User?           @relation("AssignedTo", fields: [assignedToId], references: [id])
+  messages     TicketMessage[]
+  attachments  Attachment[]
+  events       TicketEvent[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model TicketMessage {
+  id          String       @id @default(cuid())
+  ticketId    String
+  ticket      Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorType  AuthorType
+  authorName  String
+  content     String
+  attachments Attachment[]
+  createdAt   DateTime     @default(now())
+}
+
+model Attachment {
+  id        String         @id @default(cuid())
+  ticketId  String
+  ticket    Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  messageId String?
+  message   TicketMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  fileName  String
+  fileUrl   String
+  fileType  String
+  size      Int
+  checksum  String?
+  createdAt DateTime       @default(now())
+}
+
+model TicketEvent {
+  id               String          @id @default(cuid())
+  ticketId         String
+  ticket           Ticket          @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  type             TicketEventType
+  payload          Json
+  createdAt        DateTime        @default(now())
+  deliveredAt      DateTime?
+  deliveryAttempts Int             @default(0)
+  lastError        String?
+}
+
 // AI-specific models (new tables in shared database)
 model AISuggestion {
-  id               String   @id @default(cuid())
+  id               String             @id @default(cuid())
   ticketId         String
-  type             String // 'analysis', 'next_steps', 'draft_reply'
+  type             String             // Keep for backward compat
+  kind             AISuggestionKind?  // NEW: enum field
   content          Json
   confidence       Float?
-  model            String // 'gpt-4o-mini', 'claude-3-5-sonnet', etc.
+  model            String             // 'gpt-4o-mini', 'claude-3-5-sonnet', etc.
   promptTokens     Int?
   completionTokens Int?
-  createdAt        DateTime @default(now())
+  state            AISuggestionState  @default(queued) // NEW: track job state
+  error            String?            // NEW: error messages
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt       // NEW: track state changes
 
   @@index([ticketId])
   @@index([createdAt])
+  @@index([state])  // NEW: for querying pending jobs
 }
 
 model AIConversation {
