@@ -2,9 +2,9 @@
   "name": "ai-support-engineer-integration",
   "private": true,
   "scripts": {
-    "dev": "concurrently --names \"crm,tickets\" --prefix-colors \"blue,green\" \"npm run dev --prefix sample-crm\" \"npm run dev --prefix smart-ticket-system\"",
-    "dev:crm": "npm run dev --prefix sample-crm",
-    "dev:tickets": "npm run dev --prefix smart-ticket-system"
+    "dev": "concurrently --names \"crm,tickets\" --prefix-colors \"blue,green\" \"pnpm --dir sample-crm run dev\" \"pnpm --dir smart-ticket-system run dev\"",
+    "dev:crm": "pnpm --dir sample-crm run dev",
+    "dev:tickets": "pnpm --dir smart-ticket-system run dev"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

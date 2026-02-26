@@ -106,7 +106,31 @@ function toTicketSnapshot(ticket: any): TicketSnapshot {
   };
 }
 
+const TicketListItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  status: z.string(),
+  priority: z.string(),
+  customerName: z.string(),
+  productArea: z.string(),
+  createdAt: z.string(),
+});
+
+export type TicketListItem = z.infer<typeof TicketListItemSchema>;
+
+const TicketsResponseSchema = z.object({
+  tickets: z.array(TicketListItemSchema),
+  total: z.number(),
+  hasMore: z.boolean(),
+});
+
 // Export functions to call CRM API
+export async function getTickets(): Promise<CRMResult<TicketListItem[]>> {
+  const result = await crmFetch('/tickets', TicketsResponseSchema);
+  if (result.ok) return { ok: true, data: result.data.tickets };
+  return result;
+}
+
 export async function getTicket(id: string): Promise<CRMResult<TicketSnapshot>> {
   const result = await crmFetch(`/tickets/${id}`, TicketSnapshotSchema);
   if (result.ok) {
