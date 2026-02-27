@@ -6,8 +6,8 @@ A two-app platform that adds an AI Copilot layer on top of a customer support CR
 
 | App | Port | Description |
 |-----|------|-------------|
-| `sample-crm` | 3000 | CRM backend — manages tickets, messages, attachments, and audit events via a REST API |
-| `smart-ticket-system` | 3001 | AI Copilot — async LLM analysis, suggestions, and draft replies with live status polling |
+| `sample-crm` | 3000 | CRM backend — manages tickets, messages, attachments, and audit events via a REST API. Purely to serve as an example of a typical CRM platform only. The money is in the AI copilot. |
+| `smart-ticket-system` | 3001 | AI Copilot — async LLM analysis, suggestions, and draft replies with live status polling. |
 
 Both apps share a single PostgreSQL database and use [Clerk](https://clerk.com) for authentication.
 
