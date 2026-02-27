@@ -22,30 +22,50 @@ export async function analyzeTicket(
   // Redact sensitive data before sending to LLM
   const redacted = redactTicketSnapshot(ticket);
 
-  const prompt = `Analyze this support ticket and provide:
-1. A concise summary
-2. Sentiment (positive/neutral/negative)
-3. Category (technical/billing/feature-request/bug/other)
-4. Urgency level (low/medium/high/critical)
-5. Suggested actions (3-5 items)
+  const prompt = `You are a senior support engineer. Analyze the following support ticket and return a structured JSON analysis.
 
 Ticket:
 Title: ${redacted.title}
 Description: ${redacted.description}
 Customer: ${redacted.customerName}
 Product Area: ${redacted.productArea}
+Status: ${redacted.status}
+Priority: ${redacted.priority}
 
 Messages:
 ${redacted.messages.map((m) => `${m.authorName} (${m.authorType}): ${m.content}`).join('\n')}
 
-Respond in JSON format matching this schema:
+Return ONLY valid JSON matching this exact schema (no extra fields, no markdown):
 {
-  "summary": "...",
-  "sentiment": "positive|neutral|negative",
-  "category": "technical|billing|feature-request|bug|other",
-  "urgency": "low|medium|high|critical",
-  "suggestedActions": ["action1", "action2", ...]
-}`;
+  "extractedSignals": {
+    "product": "string or omit if unknown",
+    "platform": "web|mobile|desktop|api or omit if unknown",
+    "os": "string or omit if unknown",
+    "browser": "string or omit if unknown",
+    "appVersion": "string or omit if unknown",
+    "device": "string or omit if unknown",
+    "errorStrings": ["array of exact error messages found in ticket, use [] if none"],
+    "urls": ["array of URLs mentioned in ticket, use [] if none"]
+  },
+  "hypotheses": [
+    {
+      "cause": "concise description of a possible root cause",
+      "evidence": ["supporting quote or observation from the ticket"],
+      "confidence": 0.0,
+      "tests": ["step to confirm or rule out this hypothesis"]
+    }
+  ],
+  "clarifyingQuestions": ["question to ask the customer to gather missing info"],
+  "nextSteps": ["concrete action for the support agent"],
+  "riskFlags": ["any risk or concern that warrants attention"],
+  "escalationWhen": ["condition under which this ticket should be escalated"]
+}
+
+Rules:
+- confidence must be a number between 0 and 1 (e.g. 0.85)
+- errorStrings and urls must always be arrays (use [] if empty)
+- hypotheses, clarifyingQuestions, nextSteps, riskFlags, escalationWhen must always be arrays
+- Do not include any field not listed in the schema above`;
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
@@ -53,7 +73,7 @@ Respond in JSON format matching this schema:
       {
         role: 'system',
         content:
-          'You are a support ticket analysis assistant. Always respond with valid JSON.',
+          'You are a support ticket analysis assistant. Always respond with valid JSON only. No markdown, no explanation, just the JSON object.',
       },
       { role: 'user', content: prompt },
     ],
@@ -62,10 +82,42 @@ Respond in JSON format matching this schema:
 
   const rawResult = JSON.parse(completion.choices[0].message.content || '{}');
 
-  // Validate with Zod
-  const validatedResult = AnalysisResultSchema.parse(rawResult);
+  // Validate with Zod — repair-once on failure
+  const parsed = AnalysisResultSchema.safeParse(rawResult);
 
-  return validatedResult;
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  // One repair attempt: send the validation errors back to the LLM to fix
+  const repairCompletion = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content:
+          'You are a JSON repair assistant. Return only the corrected JSON object, no markdown, no explanation.',
+      },
+      {
+        role: 'user',
+        content: `The JSON you returned failed schema validation. Fix it and return ONLY valid JSON.
+
+Validation errors:
+${JSON.stringify(parsed.error.issues, null, 2)}
+
+Original JSON to fix:
+${JSON.stringify(rawResult, null, 2)}`,
+      },
+    ],
+    response_format: { type: 'json_object' },
+  });
+
+  const repairedRaw = JSON.parse(
+    repairCompletion.choices[0].message.content || '{}',
+  );
+
+  // Hard parse on repair — throws ZodError if still invalid, caught by executeAsyncJob
+  return AnalysisResultSchema.parse(repairedRaw);
 }
 
 export async function suggestNextSteps(

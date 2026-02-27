@@ -1,12 +1,29 @@
 import { z } from 'zod';
 
-// Analysis response schema with strict structure
+// Analysis response schema with rich structured output (Phase 2)
 export const AnalysisResultSchema = z.object({
-  summary: z.string().min(1).max(500),
-  sentiment: z.enum(['positive', 'neutral', 'negative']),
-  category: z.enum(['technical', 'billing', 'feature-request', 'bug', 'other']),
-  urgency: z.enum(['low', 'medium', 'high', 'critical']).optional(),
-  suggestedActions: z.array(z.string()).max(5).optional(),
+  extractedSignals: z.object({
+    product: z.string().optional(),
+    platform: z.string().optional(),
+    os: z.string().optional(),
+    browser: z.string().optional(),
+    appVersion: z.string().optional(),
+    device: z.string().optional(),
+    errorStrings: z.array(z.string()),
+    urls: z.array(z.string()),
+  }),
+  hypotheses: z.array(
+    z.object({
+      cause: z.string(),
+      evidence: z.array(z.string()),
+      confidence: z.number().min(0).max(1),
+      tests: z.array(z.string()),
+    }),
+  ),
+  clarifyingQuestions: z.array(z.string()),
+  nextSteps: z.array(z.string()),
+  riskFlags: z.array(z.string()),
+  escalationWhen: z.array(z.string()),
 });
 
 export const NextStepsResultSchema = z.object({
