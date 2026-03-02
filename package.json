@@ -2,11 +2,12 @@
   "name": "ai-support-engineer-integration",
   "private": true,
   "scripts": {
-    "dev": "concurrently --names \"crm,tickets\" --prefix-colors \"blue,green\" \"pnpm --dir sample-crm run dev\" \"pnpm --dir smart-ticket-system run dev\"",
+    "dev": "concurrently --names \"crm,tickets\" --prefix-colors \"blue,green\" \"pnpm --dir sample-crm run dev\" \"pnpm --dir smart-ticket-system run dev\" \"wait-on tcp:3000 && echo '🚀 sample-crm ready on :3000'\" \"wait-on tcp:3001 && echo '🚀 smart-ticket-system ready on :3001'\"",
     "dev:crm": "pnpm --dir sample-crm run dev",
     "dev:tickets": "pnpm --dir smart-ticket-system run dev"
   },
   "devDependencies": {
-    "concurrently": "^9.0.0"
+    "concurrently": "^9.2.1",
+    "wait-on": "^9.0.4"
   }
 }
