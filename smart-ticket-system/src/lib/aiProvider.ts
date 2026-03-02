@@ -157,7 +157,7 @@ Return JSON: { "steps": ["step1", "step2", ...] }`;
 
 export async function draftReply(
   ticket: TicketSnapshot,
-  tone: 'professional' | 'friendly' | 'concise',
+  tone: 'professional' | 'friendly' | 'concise' | 'surfer',
 ): Promise<DraftReplyResult> {
   // Redact sensitive data
   const redacted = redactTicketSnapshot(ticket);
@@ -166,6 +166,7 @@ export async function draftReply(
     professional: 'formal and respectful',
     friendly: 'warm and conversational',
     concise: 'brief and to-the-point',
+    surfer: 'like a stereotypical California surfer dude — use surfing slang, say things like "dude", "bro", "totally", "gnarly", "stoked", "hang ten", "radical", "no worries", and keep the vibe super chill and laid-back',
   };
 
   const latestMessage =

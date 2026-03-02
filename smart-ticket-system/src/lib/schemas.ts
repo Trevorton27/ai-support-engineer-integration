@@ -32,7 +32,7 @@ export const NextStepsResultSchema = z.object({
 
 export const DraftReplyResultSchema = z.object({
   reply: z.string().min(1).max(2000),
-  tone: z.enum(['professional', 'friendly', 'concise']).optional(),
+  tone: z.enum(['professional', 'friendly', 'concise', 'surfer']).optional(),
 });
 
 export const ChatResultSchema = z.object({
@@ -50,7 +50,7 @@ export const SuggestRequestSchema = z.object({
 
 export const DraftReplyRequestSchema = z.object({
   ticketId: z.string().cuid(),
-  tone: z.enum(['professional', 'friendly', 'concise']).default('professional'),
+  tone: z.enum(['professional', 'friendly', 'concise', 'surfer']).default('professional'),
 });
 
 export const ChatRequestSchema = z.object({

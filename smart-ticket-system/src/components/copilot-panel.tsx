@@ -48,7 +48,7 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
   const [currentJob, setCurrentJob] = useState<SuggestionState | null>(null);
   const [result, setResult] = useState<any>(null);
   const [resultType, setResultType] = useState<string>('');
-  const [tone, setTone] = useState<'professional' | 'friendly' | 'concise'>(
+  const [tone, setTone] = useState<'professional' | 'friendly' | 'concise' | 'surfer'>(
     'professional',
   );
   const [chatInput, setChatInput] = useState('');
@@ -57,6 +57,7 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
   useEffect(() => {
     if (
       !currentJob ||
+      !currentJob.suggestionId ||
       currentJob.state === 'success' ||
       currentJob.state === 'error'
     ) {
@@ -67,10 +68,11 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
       const statusResult = await pollStatus(currentJob.suggestionId);
 
       if (statusResult.ok) {
-        setCurrentJob(statusResult.data as SuggestionState);
+        const data = statusResult.data as { id: string; state: SuggestionState['state']; content?: any; error?: string };
+        setCurrentJob(prev => prev ? { ...prev, state: data.state, content: data.content, error: data.error } : prev);
 
-        if (statusResult.data.state === 'success') {
-          setResult(statusResult.data.content);
+        if (data.state === 'success') {
+          setResult(data.content);
         }
       }
     }, 1000); // Poll every second
@@ -419,13 +421,14 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
           <select
             value={tone}
             onChange={(e) =>
-              setTone(e.target.value as 'professional' | 'friendly' | 'concise')
+              setTone(e.target.value as 'professional' | 'friendly' | 'concise' | 'surfer')
             }
             className="rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
           >
             <option value="professional">Professional</option>
             <option value="friendly">Friendly</option>
             <option value="concise">Concise</option>
+            <option value="surfer">Surfer</option>
           </select>
           <button
             onClick={handleDraftReply}
