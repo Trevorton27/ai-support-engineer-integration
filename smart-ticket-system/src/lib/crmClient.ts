@@ -139,6 +139,24 @@ export async function getTicket(id: string): Promise<CRMResult<TicketSnapshot>> 
   return result;
 }
 
+export async function updateTicketStatus(
+  ticketId: string,
+  status: string,
+): Promise<CRMResult<{ id: string; status: string; updatedAt: string }>> {
+  return crmFetch(
+    `/tickets/${ticketId}/status`,
+    z.object({
+      id: z.string(),
+      status: z.string(),
+      updatedAt: z.string(),
+    }),
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    },
+  );
+}
+
 export async function addTicketMessage(
   ticketId: string,
   content: string,

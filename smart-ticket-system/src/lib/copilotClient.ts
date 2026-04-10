@@ -86,6 +86,19 @@ export async function saveDraft(
   });
 }
 
+export async function updateTicketStatusAsync(
+  ticketId: string,
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED',
+) {
+  return copilotFetch<{ id: string; status: string; updatedAt: string }>(
+    '/update-status',
+    {
+      method: 'POST',
+      body: JSON.stringify({ ticketId, status }),
+    },
+  );
+}
+
 export async function chatAsync(ticketId: string, message: string) {
   return copilotFetch('/chat', {
     method: 'POST',

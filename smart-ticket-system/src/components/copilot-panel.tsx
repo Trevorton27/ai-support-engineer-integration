@@ -8,8 +8,11 @@ import {
   saveDraft,
   chatAsync,
   pollStatus,
+  updateTicketStatusAsync,
   type TicketSnapshot,
 } from '@/lib/copilotClient';
+
+type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 
 type DraftType = 'customer_reply' | 'internal_note' | 'escalation';
 
@@ -63,6 +66,13 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
     'professional',
   );
   const [chatInput, setChatInput] = useState('');
+
+  // Ticket status state
+  const [ticketStatus, setTicketStatus] = useState<TicketStatus>(
+    (snapshot.status as TicketStatus) || 'OPEN',
+  );
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   // Phase 3 draft state
   const [draftType, setDraftType] = useState<DraftType>('customer_reply');
@@ -202,6 +212,22 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
     if (res.ok) {
       setDraftMarkedSent(true);
       setDraftSaved(true);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: TicketStatus) => {
+    if (newStatus === ticketStatus) return;
+    setStatusUpdating(true);
+    setStatusMessage(null);
+    const res = await updateTicketStatusAsync(snapshot.id, newStatus);
+    setStatusUpdating(false);
+    if (res.ok) {
+      setTicketStatus(newStatus);
+      setStatusMessage(`Status updated to ${newStatus.replace('_', ' ')}`);
+      setTimeout(() => setStatusMessage(null), 3000);
+    } else {
+      setStatusMessage('Failed to update status');
+      setTimeout(() => setStatusMessage(null), 3000);
     }
   };
 
@@ -472,14 +498,14 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
             onClick={handleSaveDraft}
             disabled={!draftSuggestionId || draftSaving}
             data-testid="draft-save-button"
-            className="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-100 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+            className="rounded-md bg-gray-700 px-2 py-1 text-xs font-medium text-white hover:bg-gray-600 disabled:opacity-50 dark:bg-gray-300 dark:text-gray-900 dark:hover:bg-gray-400"
           >
             {draftSaving ? 'Saving...' : draftSaved ? 'Saved \u2713' : 'Save'}
           </button>
           <button
             onClick={handleCopyDraft}
             data-testid="draft-copy-button"
-            className="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+            className="rounded-md bg-gray-700 px-2 py-1 text-xs font-medium text-white hover:bg-gray-600 dark:bg-gray-300 dark:text-gray-900 dark:hover:bg-gray-400"
           >
             {draftCopied ? 'Copied \u2713' : 'Copy'}
           </button>
@@ -487,10 +513,10 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
             onClick={handleMarkSent}
             disabled={!draftSuggestionId || draftMarkedSent}
             data-testid="draft-mark-sent-button"
-            className={`rounded-md border px-2 py-1 text-xs disabled:opacity-50 ${
+            className={`rounded-md px-2 py-1 text-xs font-medium disabled:opacity-50 ${
               draftMarkedSent
-                ? 'border-green-300 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-300'
-                : 'border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800'
+                ? 'bg-green-600 text-white dark:bg-green-500'
+                : 'bg-gray-700 text-white hover:bg-gray-600 dark:bg-gray-300 dark:text-gray-900 dark:hover:bg-gray-400'
             }`}
           >
             {draftMarkedSent ? 'Sent \u2713' : 'Mark as Sent'}
@@ -532,7 +558,7 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
           onClick={() => {
             navigator.clipboard.writeText(JSON.stringify(result, null, 2));
           }}
-          className="mt-2 rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+          className="mt-2 rounded-md bg-gray-700 px-2 py-1 text-xs font-medium text-white hover:bg-gray-600 dark:bg-gray-300 dark:text-gray-900 dark:hover:bg-gray-400"
         >
           Copy JSON
         </button>
@@ -552,12 +578,63 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
 
       {renderStateIndicator()}
 
+      {/* ── Ticket Status ── */}
       <div className="space-y-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Ticket Status
+        </h4>
+        <div className="flex gap-1">
+          {(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const).map(
+            (s) => {
+              const isActive = ticketStatus === s;
+              const colorMap: Record<TicketStatus, string> = {
+                OPEN: isActive
+                  ? 'bg-blue-600 text-white dark:bg-blue-500'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700',
+                IN_PROGRESS: isActive
+                  ? 'bg-yellow-500 text-white dark:bg-yellow-500'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700',
+                RESOLVED: isActive
+                  ? 'bg-green-600 text-white dark:bg-green-500'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700',
+                CLOSED: isActive
+                  ? 'bg-gray-600 text-white dark:bg-gray-500'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700',
+              };
+              return (
+                <button
+                  key={s}
+                  onClick={() => handleStatusChange(s)}
+                  disabled={statusUpdating}
+                  className={`flex-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${colorMap[s]}`}
+                >
+                  {s.replace('_', ' ')}
+                </button>
+              );
+            },
+          )}
+        </div>
+        {statusMessage && (
+          <p
+            className={`text-xs ${statusMessage.includes('Failed') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}
+          >
+            {statusMessage}
+          </p>
+        )}
+      </div>
+
+      <hr className="border-gray-200 dark:border-gray-700" />
+
+      {/* ── AI Actions ── */}
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          AI Actions
+        </h4>
         <button
           onClick={handleAnalyze}
           disabled={isLoading}
           data-testid="analyze-button"
-          className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-left text-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+          className="w-full rounded-md bg-gray-800 px-3 py-1.5 text-center text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 dark:bg-gray-200 dark:text-gray-900 dark:hover:bg-gray-300"
         >
           Analyze Ticket
         </button>
@@ -565,24 +642,40 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
         <button
           onClick={handleSuggest}
           disabled={isLoading}
-          className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-left text-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+          className="w-full rounded-md bg-gray-800 px-3 py-1.5 text-center text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 dark:bg-gray-200 dark:text-gray-900 dark:hover:bg-gray-300"
         >
           Suggest Next Steps
         </button>
+      </div>
 
-        <div className="space-y-2">
-          <div className="flex gap-2">
+      <hr className="border-gray-200 dark:border-gray-700" />
+
+      {/* ── Create AI Generated Post ── */}
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Create AI Generated Post
+        </h4>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <label className="mb-0.5 block text-[10px] font-medium text-gray-400 dark:text-gray-500">
+              Post Type
+            </label>
             <select
               value={draftType}
               onChange={(e) => setDraftType(e.target.value as DraftType)}
               data-testid="draft-type-select"
-              className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
+              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
             >
               <option value="customer_reply">Customer Reply</option>
               <option value="internal_note">Internal Note</option>
               <option value="escalation">Escalation</option>
             </select>
-            {draftType === 'customer_reply' && (
+          </div>
+          {draftType === 'customer_reply' && (
+            <div>
+              <label className="mb-0.5 block text-[10px] font-medium text-gray-400 dark:text-gray-500">
+                Post Tone
+              </label>
               <select
                 value={tone}
                 onChange={(e) =>
@@ -601,18 +694,26 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
                 <option value="concise">Concise</option>
                 <option value="surfer">Surfer</option>
               </select>
-            )}
-          </div>
-          <button
-            onClick={handleGenerateDraft}
-            disabled={isLoading}
-            data-testid="generate-draft-button"
-            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-left text-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
-          >
-            Generate Draft
-          </button>
+            </div>
+          )}
         </div>
+        <button
+          onClick={handleGenerateDraft}
+          disabled={isLoading}
+          data-testid="generate-draft-button"
+          className="w-full rounded-md bg-blue-600 px-3 py-1.5 text-center text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
+        >
+          Generate Draft
+        </button>
+      </div>
 
+      <hr className="border-gray-200 dark:border-gray-700" />
+
+      {/* ── Ask Me a Question ── */}
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Ask Me a Question
+        </h4>
         <div className="flex gap-2">
           <input
             type="text"
@@ -629,7 +730,7 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
           <button
             onClick={handleChat}
             disabled={isLoading || !chatInput.trim()}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+            className="rounded-md bg-gray-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 dark:bg-gray-200 dark:text-gray-900 dark:hover:bg-gray-300"
           >
             Ask
           </button>
