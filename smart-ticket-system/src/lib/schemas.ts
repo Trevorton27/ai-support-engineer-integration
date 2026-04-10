@@ -53,6 +53,42 @@ export const DraftReplyRequestSchema = z.object({
   tone: z.enum(['professional', 'friendly', 'concise', 'surfer']).default('professional'),
 });
 
+// Phase 3 — Draft Generation
+export const DraftGenerateRequestSchema = z.object({
+  ticketId: z.string().cuid(),
+  draftType: z.enum(['customer_reply', 'internal_note', 'escalation']),
+  tone: z
+    .enum(['professional', 'friendly', 'concise', 'surfer'])
+    .default('professional'),
+});
+
+export const DraftSaveRequestSchema = z.object({
+  text: z.string().min(1),
+  markedSent: z.boolean().optional(),
+});
+
+export const DraftCustomerReplyResultSchema = z.object({
+  text: z.string().min(1).max(2000),
+  draftType: z.literal('customer_reply'),
+  tone: z.string(),
+  usedAnalysisId: z.string().nullable(),
+  markedSent: z.boolean().default(false),
+});
+
+export const DraftInternalNoteResultSchema = z.object({
+  text: z.string().min(1).max(5000),
+  draftType: z.literal('internal_note'),
+  usedAnalysisId: z.string().nullable(),
+  markedSent: z.boolean().default(false),
+});
+
+export const DraftEscalationResultSchema = z.object({
+  text: z.string().min(1).max(5000),
+  draftType: z.literal('escalation'),
+  usedAnalysisId: z.string().nullable(),
+  markedSent: z.boolean().default(false),
+});
+
 export const ChatRequestSchema = z.object({
   ticketId: z.string().cuid(),
   message: z.string().min(1).max(1000),
@@ -63,3 +99,10 @@ export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
 export type NextStepsResult = z.infer<typeof NextStepsResultSchema>;
 export type DraftReplyResult = z.infer<typeof DraftReplyResultSchema>;
 export type ChatResult = z.infer<typeof ChatResultSchema>;
+export type DraftCustomerReplyResult = z.infer<
+  typeof DraftCustomerReplyResultSchema
+>;
+export type DraftInternalNoteResult = z.infer<
+  typeof DraftInternalNoteResultSchema
+>;
+export type DraftEscalationResult = z.infer<typeof DraftEscalationResultSchema>;

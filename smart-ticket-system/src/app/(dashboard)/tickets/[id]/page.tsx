@@ -20,9 +20,10 @@ const priorityColors: Record<string, string> = {
 export default async function TicketDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const result = await getTicket(params.id);
+  const { id } = await params;
+  const result = await getTicket(id);
 
   if (!result.ok) {
     notFound();

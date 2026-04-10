@@ -1,14 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   analyzeTicketAsync,
   suggestNextStepsAsync,
-  draftReplyAsync,
+  generateDraftAsync,
+  saveDraft,
   chatAsync,
   pollStatus,
   type TicketSnapshot,
 } from '@/lib/copilotClient';
+
+type DraftType = 'customer_reply' | 'internal_note' | 'escalation';
+
+type DraftContent = {
+  text: string;
+  draftType: DraftType;
+  tone?: string;
+  usedAnalysisId: string | null;
+  markedSent?: boolean;
+};
 
 type CopilotPanelProps = {
   snapshot: TicketSnapshot;
@@ -53,6 +64,48 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
   );
   const [chatInput, setChatInput] = useState('');
 
+  // Phase 3 draft state
+  const [draftType, setDraftType] = useState<DraftType>('customer_reply');
+  const [draftEditText, setDraftEditText] = useState('');
+  const [draftSuggestionId, setDraftSuggestionId] = useState<string | null>(
+    null,
+  );
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [draftMarkedSent, setDraftMarkedSent] = useState(false);
+  const [draftCopied, setDraftCopied] = useState(false);
+
+  const resultTypeRef = useRef(resultType);
+  useEffect(() => {
+    resultTypeRef.current = resultType;
+  }, [resultType]);
+
+  // Reload last saved customer-reply draft from localStorage on mount
+  useEffect(() => {
+    const savedId = localStorage.getItem(
+      `draft-customer_reply-${snapshot.id}`,
+    );
+    if (!savedId) return;
+    (async () => {
+      const r = await pollStatus(savedId);
+      if (!r.ok) return;
+      const data = r.data as {
+        id: string;
+        state: SuggestionState['state'];
+        content?: any;
+      };
+      if (data.state === 'success' && data.content?.text) {
+        setResult(data.content);
+        setResultType('draft');
+        setDraftType('customer_reply');
+        setDraftEditText(data.content.text);
+        setDraftSuggestionId(savedId);
+        setDraftMarkedSent(Boolean(data.content.markedSent));
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Polling effect
   useEffect(() => {
     if (
@@ -73,6 +126,11 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
 
         if (data.state === 'success') {
           setResult(data.content);
+          if (resultTypeRef.current === 'draft' && data.content?.text) {
+            setDraftEditText(data.content.text);
+            setDraftMarkedSent(Boolean(data.content.markedSent));
+            setDraftSaved(false);
+          }
         }
       }
     }, 1000); // Poll every second
@@ -98,12 +156,52 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
     }
   };
 
-  const handleDraftReply = async () => {
+  const handleGenerateDraft = async () => {
     setResult(null);
     setResultType('draft');
-    const res = await draftReplyAsync(snapshot.id, tone);
+    setDraftEditText('');
+    setDraftSuggestionId(null);
+    setDraftSaved(false);
+    setDraftMarkedSent(false);
+    setDraftCopied(false);
+
+    const res = await generateDraftAsync(snapshot.id, draftType, tone);
     if (res.ok) {
-      setCurrentJob(res.data as SuggestionState);
+      const data = res.data as { suggestionId: string; state: SuggestionState['state'] };
+      setCurrentJob({
+        suggestionId: data.suggestionId,
+        state: data.state,
+      });
+      setDraftSuggestionId(data.suggestionId);
+      localStorage.setItem(
+        `draft-${draftType}-${snapshot.id}`,
+        data.suggestionId,
+      );
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!draftSuggestionId) return;
+    setDraftSaving(true);
+    const res = await saveDraft(draftSuggestionId, draftEditText);
+    setDraftSaving(false);
+    if (res.ok) {
+      setDraftSaved(true);
+    }
+  };
+
+  const handleCopyDraft = async () => {
+    await navigator.clipboard.writeText(draftEditText);
+    setDraftCopied(true);
+    setTimeout(() => setDraftCopied(false), 1500);
+  };
+
+  const handleMarkSent = async () => {
+    if (!draftSuggestionId) return;
+    const res = await saveDraft(draftSuggestionId, draftEditText, true);
+    if (res.ok) {
+      setDraftMarkedSent(true);
+      setDraftSaved(true);
     }
   };
 
@@ -338,11 +436,66 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
     );
   };
 
-  const renderDraftResult = (data: { reply: string }) => {
+  const renderDraftResult = (data: DraftContent) => {
+    const label =
+      data.draftType === 'customer_reply'
+        ? 'Customer Reply Draft'
+        : data.draftType === 'internal_note'
+          ? 'Internal Note Draft'
+          : 'Escalation Handoff Draft';
+
     return (
-      <div>
-        <span className="font-medium">Draft Reply:</span>
-        <p className="mt-1 whitespace-pre-wrap">{data.reply}</p>
+      <div data-testid="draft-result" className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-medium">{label}</span>
+          {data.usedAnalysisId && (
+            <span
+              className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+              data-testid="draft-analysis-badge"
+            >
+              Using saved analysis
+            </span>
+          )}
+        </div>
+        <textarea
+          data-testid="draft-edit-textarea"
+          value={draftEditText}
+          onChange={(e) => {
+            setDraftEditText(e.target.value);
+            setDraftSaved(false);
+          }}
+          rows={10}
+          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
+        />
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleSaveDraft}
+            disabled={!draftSuggestionId || draftSaving}
+            data-testid="draft-save-button"
+            className="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-100 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+          >
+            {draftSaving ? 'Saving...' : draftSaved ? 'Saved \u2713' : 'Save'}
+          </button>
+          <button
+            onClick={handleCopyDraft}
+            data-testid="draft-copy-button"
+            className="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+          >
+            {draftCopied ? 'Copied \u2713' : 'Copy'}
+          </button>
+          <button
+            onClick={handleMarkSent}
+            disabled={!draftSuggestionId || draftMarkedSent}
+            data-testid="draft-mark-sent-button"
+            className={`rounded-md border px-2 py-1 text-xs disabled:opacity-50 ${
+              draftMarkedSent
+                ? 'border-green-300 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-300'
+                : 'border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800'
+            }`}
+          >
+            {draftMarkedSent ? 'Sent \u2713' : 'Mark as Sent'}
+          </button>
+        </div>
       </div>
     );
   };
@@ -417,25 +570,46 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
           Suggest Next Steps
         </button>
 
-        <div className="flex gap-2">
-          <select
-            value={tone}
-            onChange={(e) =>
-              setTone(e.target.value as 'professional' | 'friendly' | 'concise' | 'surfer')
-            }
-            className="rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
-          >
-            <option value="professional">Professional</option>
-            <option value="friendly">Friendly</option>
-            <option value="concise">Concise</option>
-            <option value="surfer">Surfer</option>
-          </select>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <select
+              value={draftType}
+              onChange={(e) => setDraftType(e.target.value as DraftType)}
+              data-testid="draft-type-select"
+              className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
+            >
+              <option value="customer_reply">Customer Reply</option>
+              <option value="internal_note">Internal Note</option>
+              <option value="escalation">Escalation</option>
+            </select>
+            {draftType === 'customer_reply' && (
+              <select
+                value={tone}
+                onChange={(e) =>
+                  setTone(
+                    e.target.value as
+                      | 'professional'
+                      | 'friendly'
+                      | 'concise'
+                      | 'surfer',
+                  )
+                }
+                className="rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
+              >
+                <option value="professional">Professional</option>
+                <option value="friendly">Friendly</option>
+                <option value="concise">Concise</option>
+                <option value="surfer">Surfer</option>
+              </select>
+            )}
+          </div>
           <button
-            onClick={handleDraftReply}
+            onClick={handleGenerateDraft}
             disabled={isLoading}
-            className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-left text-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+            data-testid="generate-draft-button"
+            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-left text-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
           >
-            Draft Reply
+            Generate Draft
           </button>
         </div>
 

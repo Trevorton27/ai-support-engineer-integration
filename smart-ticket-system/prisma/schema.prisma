@@ -62,6 +62,9 @@ enum AISuggestionKind {
   analysis
   next_steps
   draft_reply
+  draft_customer_reply
+  draft_internal_note
+  draft_escalation
   chat
 }
 

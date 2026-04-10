@@ -53,11 +53,36 @@ export async function suggestNextStepsAsync(ticketId: string) {
 
 export async function draftReplyAsync(
   ticketId: string,
-  tone: 'professional' | 'friendly' | 'concise',
+  tone: 'professional' | 'friendly' | 'concise' | 'surfer',
 ) {
   return copilotFetch('/draft-reply', {
     method: 'POST',
     body: JSON.stringify({ ticketId, tone }),
+  });
+}
+
+export async function generateDraftAsync(
+  ticketId: string,
+  draftType: 'customer_reply' | 'internal_note' | 'escalation',
+  tone?: 'professional' | 'friendly' | 'concise' | 'surfer',
+) {
+  return copilotFetch('/draft-reply', {
+    method: 'POST',
+    body: JSON.stringify({ ticketId, draftType, tone }),
+  });
+}
+
+export async function saveDraft(
+  suggestionId: string,
+  text: string,
+  markedSent?: boolean,
+) {
+  return copilotFetch(`/draft-reply/${suggestionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      text,
+      ...(markedSent !== undefined && { markedSent }),
+    }),
   });
 }
 

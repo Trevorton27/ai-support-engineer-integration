@@ -5,6 +5,11 @@ import {
   DraftReplyResultSchema,
   ChatResultSchema,
   AnalyzeRequestSchema,
+  DraftGenerateRequestSchema,
+  DraftSaveRequestSchema,
+  DraftCustomerReplyResultSchema,
+  DraftInternalNoteResultSchema,
+  DraftEscalationResultSchema,
 } from '../schemas';
 
 describe('AnalysisResultSchema', () => {
@@ -239,6 +244,172 @@ describe('ChatResultSchema', () => {
 
     const result = ChatResultSchema.safeParse(invalid);
     expect(result.success).toBe(false);
+  });
+});
+
+describe('DraftGenerateRequestSchema', () => {
+  const validId = 'clabcdef1234567890';
+
+  it('validates a customer_reply request with tone', () => {
+    expect(
+      DraftGenerateRequestSchema.safeParse({
+        ticketId: validId,
+        draftType: 'customer_reply',
+        tone: 'friendly',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('defaults tone to professional when omitted', () => {
+    const r = DraftGenerateRequestSchema.safeParse({
+      ticketId: validId,
+      draftType: 'internal_note',
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.tone).toBe('professional');
+  });
+
+  it('rejects unknown draftType', () => {
+    expect(
+      DraftGenerateRequestSchema.safeParse({
+        ticketId: validId,
+        draftType: 'unknown',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects invalid ticketId cuid', () => {
+    expect(
+      DraftGenerateRequestSchema.safeParse({
+        ticketId: 'not-a-cuid',
+        draftType: 'customer_reply',
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('DraftSaveRequestSchema', () => {
+  it('accepts text only', () => {
+    expect(DraftSaveRequestSchema.safeParse({ text: 'hello' }).success).toBe(
+      true,
+    );
+  });
+  it('accepts text with markedSent', () => {
+    expect(
+      DraftSaveRequestSchema.safeParse({ text: 'hello', markedSent: true })
+        .success,
+    ).toBe(true);
+  });
+  it('rejects empty text', () => {
+    expect(DraftSaveRequestSchema.safeParse({ text: '' }).success).toBe(false);
+  });
+});
+
+describe('DraftCustomerReplyResultSchema', () => {
+  const validResult = {
+    text: 'Thanks for reaching out. Here are the next steps...',
+    draftType: 'customer_reply' as const,
+    tone: 'professional',
+    usedAnalysisId: 'cl_test_analysis',
+    markedSent: false,
+  };
+
+  it('validates a correct customer reply result', () => {
+    expect(DraftCustomerReplyResultSchema.safeParse(validResult).success).toBe(
+      true,
+    );
+  });
+
+  it('allows usedAnalysisId to be null', () => {
+    expect(
+      DraftCustomerReplyResultSchema.safeParse({
+        ...validResult,
+        usedAnalysisId: null,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects text over 2000 characters', () => {
+    expect(
+      DraftCustomerReplyResultSchema.safeParse({
+        ...validResult,
+        text: 'a'.repeat(2001),
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects empty text', () => {
+    expect(
+      DraftCustomerReplyResultSchema.safeParse({ ...validResult, text: '' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('rejects missing text field', () => {
+    const { text: _t, ...rest } = validResult;
+    expect(DraftCustomerReplyResultSchema.safeParse(rest).success).toBe(false);
+  });
+
+  it('rejects wrong draftType literal', () => {
+    expect(
+      DraftCustomerReplyResultSchema.safeParse({
+        ...validResult,
+        draftType: 'internal_note',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('defaults markedSent to false when omitted', () => {
+    const { markedSent: _m, ...rest } = validResult;
+    const r = DraftCustomerReplyResultSchema.safeParse(rest);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.markedSent).toBe(false);
+  });
+});
+
+describe('DraftInternalNoteResultSchema', () => {
+  it('accepts valid internal note', () => {
+    expect(
+      DraftInternalNoteResultSchema.safeParse({
+        text: 'Summary: ...',
+        draftType: 'internal_note',
+        usedAnalysisId: null,
+        markedSent: false,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects text over 5000 characters', () => {
+    expect(
+      DraftInternalNoteResultSchema.safeParse({
+        text: 'a'.repeat(5001),
+        draftType: 'internal_note',
+        usedAnalysisId: null,
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('DraftEscalationResultSchema', () => {
+  it('accepts valid escalation', () => {
+    expect(
+      DraftEscalationResultSchema.safeParse({
+        text: 'Summary: ...',
+        draftType: 'escalation',
+        usedAnalysisId: null,
+        markedSent: false,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects wrong draftType literal', () => {
+    expect(
+      DraftEscalationResultSchema.safeParse({
+        text: 'x',
+        draftType: 'customer_reply',
+        usedAnalysisId: null,
+      }).success,
+    ).toBe(false);
   });
 });
 
