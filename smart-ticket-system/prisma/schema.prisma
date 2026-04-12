@@ -190,3 +190,17 @@ model AICache {
 
   @@index([expiresAt])
 }
+
+// Phase 4 — Knowledge Base for RAG
+model KnowledgeBaseArticle {
+  id          String                    @id @default(cuid())
+  title       String
+  content     String
+  url         String?
+  productArea String?
+  embedding   Unsupported("vector(1536)")
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+
+  @@index([productArea])
+}

@@ -24,10 +24,34 @@ export const AnalysisResultSchema = z.object({
   nextSteps: z.array(z.string()),
   riskFlags: z.array(z.string()),
   escalationWhen: z.array(z.string()),
+  references: z
+    .array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        url: z.string().nullable(),
+        snippet: z.string(),
+        score: z.number().min(0).max(1),
+      }),
+    )
+    .optional()
+    .default([]),
 });
 
 export const NextStepsResultSchema = z.object({
   steps: z.array(z.string().min(1).max(200)).min(1).max(5),
+  references: z
+    .array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        url: z.string().nullable(),
+        snippet: z.string(),
+        score: z.number().min(0).max(1),
+      }),
+    )
+    .optional()
+    .default([]),
 });
 
 export const DraftReplyResultSchema = z.object({
@@ -93,6 +117,17 @@ export const ChatRequestSchema = z.object({
   ticketId: z.string().cuid(),
   message: z.string().min(1).max(1000),
 });
+
+// Phase 4 — Knowledge Base references
+export const KBReferenceSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  url: z.string().nullable(),
+  snippet: z.string(),
+  score: z.number().min(0).max(1),
+});
+
+export type KBReference = z.infer<typeof KBReferenceSchema>;
 
 // Inferred types
 export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;

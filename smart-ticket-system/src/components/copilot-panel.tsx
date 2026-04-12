@@ -445,19 +445,77 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
             </ul>
           </div>
         )}
+
+        {/* KB References */}
+        {renderReferences((data as any).references)}
       </div>
     );
   };
 
-  const renderStepsResult = (data: { steps: string[] }) => {
+  const renderReferences = (
+    references?: Array<{
+      id: string;
+      title: string;
+      url?: string | null;
+      snippet: string;
+      score: number;
+    }>,
+  ) => {
+    if (!references || references.length === 0) return null;
+
     return (
-      <div>
-        <span className="font-medium">Next Steps:</span>
-        <ul className="ml-5 mt-1 list-disc">
-          {data.steps.map((step, i) => (
-            <li key={i}>{step}</li>
+      <div data-testid="references-section">
+        <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          References
+        </h4>
+        <div className="space-y-2">
+          {references.map((ref) => (
+            <div
+              key={ref.id}
+              className="rounded-md border border-gray-200 p-2 dark:border-gray-700"
+              data-testid="reference-item"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-sm font-medium">
+                  {ref.url ? (
+                    <a
+                      href={ref.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {ref.title}
+                    </a>
+                  ) : (
+                    ref.title
+                  )}
+                </span>
+                <span className="shrink-0 rounded bg-purple-100 px-1.5 py-0.5 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                  {Math.round(ref.score * 100)}%
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                {ref.snippet}
+              </p>
+            </div>
           ))}
-        </ul>
+        </div>
+      </div>
+    );
+  };
+
+  const renderStepsResult = (data: { steps: string[]; references?: any[] }) => {
+    return (
+      <div className="space-y-4">
+        <div>
+          <span className="font-medium">Next Steps:</span>
+          <ul className="ml-5 mt-1 list-disc">
+            {data.steps.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ul>
+        </div>
+        {renderReferences(data.references)}
       </div>
     );
   };

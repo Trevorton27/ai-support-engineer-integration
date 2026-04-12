@@ -375,6 +375,96 @@ test.describe('Copilot Panel', () => {
     ).toContainText('Reproduction Steps');
   });
 
+  test('analyze shows References section with KB results', async ({ page }) => {
+    const suggestionId = 'test-ref-suggestion';
+
+    await page.route('**/api/copilot/v1/analyze', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          data: { suggestionId, state: 'queued' },
+        }),
+      });
+    });
+
+    await page.route(
+      `**/api/copilot/v1/status/${suggestionId}`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: true,
+            data: {
+              id: suggestionId,
+              state: 'success',
+              content: {
+                extractedSignals: { errorStrings: [], urls: [] },
+                hypotheses: [],
+                clarifyingQuestions: [],
+                nextSteps: [],
+                riskFlags: [],
+                escalationWhen: [],
+                references: [
+                  {
+                    id: 'kb_1',
+                    title: 'How to Reset Your Password',
+                    url: 'https://help.example.com/password-reset',
+                    snippet:
+                      'Navigate to the login page and click Forgot Password...',
+                    score: 0.92,
+                  },
+                  {
+                    id: 'kb_2',
+                    title: 'Troubleshooting API Rate Limits',
+                    url: null,
+                    snippet: 'If you receive a 429 error, implement backoff...',
+                    score: 0.78,
+                  },
+                ],
+              },
+              error: null,
+              kind: 'analysis',
+              updatedAt: new Date().toISOString(),
+            },
+          }),
+        });
+      },
+    );
+
+    await page.goto('/tickets/test-ticket-id');
+    await page.click('[data-testid="analyze-button"]');
+
+    await expect(page.locator('[data-testid="copilot-state"]')).toContainText(
+      'Complete',
+      { timeout: 5000 },
+    );
+
+    // References section should be visible
+    await expect(
+      page.locator('[data-testid="references-section"]'),
+    ).toBeVisible();
+
+    // Should show both reference items
+    const items = page.locator('[data-testid="reference-item"]');
+    await expect(items).toHaveCount(2);
+
+    // First reference has a link
+    await expect(
+      items.first().locator('a[href="https://help.example.com/password-reset"]'),
+    ).toBeVisible();
+    await expect(items.first()).toContainText('How to Reset Your Password');
+    await expect(items.first()).toContainText('92%');
+
+    // Second reference has no link (url is null)
+    await expect(items.nth(1)).toContainText(
+      'Troubleshooting API Rate Limits',
+    );
+    await expect(items.nth(1)).toContainText('78%');
+  });
+
   test('should handle error state from async job', async ({ page }) => {
     let suggestionId = 'test-suggestion-error';
 

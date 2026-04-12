@@ -4,6 +4,7 @@ import { analyzeTicket } from '@/lib/aiProvider';
 import { prisma } from '@/lib/prisma';
 import { AnalyzeRequestSchema } from '@/lib/schemas';
 import { executeAsyncJob } from '@/lib/asyncExecution';
+import { searchKnowledgeBase } from '@/lib/kbRetrieval';
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,10 +32,16 @@ export async function POST(req: NextRequest) {
         throw new Error(ticketResult.error);
       }
 
+      // Search KB for relevant references
+      const references = await searchKnowledgeBase(
+        `${ticketResult.data.title} ${ticketResult.data.description}`,
+        { productArea: ticketResult.data.productArea },
+      ).catch(() => []);
+
       // Analyze with AI (includes redaction and validation)
       const analysis = await analyzeTicket(ticketResult.data);
 
-      return analysis;
+      return { ...analysis, references };
     });
 
     // Return immediately with suggestion ID

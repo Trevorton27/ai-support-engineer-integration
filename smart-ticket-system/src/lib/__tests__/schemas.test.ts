@@ -10,6 +10,7 @@ import {
   DraftCustomerReplyResultSchema,
   DraftInternalNoteResultSchema,
   DraftEscalationResultSchema,
+  KBReferenceSchema,
 } from '../schemas';
 
 describe('AnalysisResultSchema', () => {
@@ -410,6 +411,107 @@ describe('DraftEscalationResultSchema', () => {
         usedAnalysisId: null,
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('KBReferenceSchema', () => {
+  const validRef = {
+    id: 'kb_123',
+    title: 'How to Reset Password',
+    url: 'https://help.example.com/password',
+    snippet: 'Navigate to the login page and click Forgot Password...',
+    score: 0.85,
+  };
+
+  it('validates a correct reference', () => {
+    expect(KBReferenceSchema.safeParse(validRef).success).toBe(true);
+  });
+
+  it('accepts null url', () => {
+    expect(
+      KBReferenceSchema.safeParse({ ...validRef, url: null }).success,
+    ).toBe(true);
+  });
+
+  it('rejects missing title', () => {
+    const { title: _t, ...rest } = validRef;
+    expect(KBReferenceSchema.safeParse(rest).success).toBe(false);
+  });
+
+  it('rejects missing snippet', () => {
+    const { snippet: _s, ...rest } = validRef;
+    expect(KBReferenceSchema.safeParse(rest).success).toBe(false);
+  });
+
+  it('rejects score above 1', () => {
+    expect(
+      KBReferenceSchema.safeParse({ ...validRef, score: 1.5 }).success,
+    ).toBe(false);
+  });
+
+  it('rejects score below 0', () => {
+    expect(
+      KBReferenceSchema.safeParse({ ...validRef, score: -0.1 }).success,
+    ).toBe(false);
+  });
+});
+
+describe('AnalysisResultSchema with references', () => {
+  const baseAnalysis = {
+    extractedSignals: { errorStrings: [], urls: [] },
+    hypotheses: [],
+    clarifyingQuestions: [],
+    nextSteps: [],
+    riskFlags: [],
+    escalationWhen: [],
+  };
+
+  it('defaults references to empty array when omitted', () => {
+    const r = AnalysisResultSchema.safeParse(baseAnalysis);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.references).toEqual([]);
+  });
+
+  it('accepts analysis with references', () => {
+    const r = AnalysisResultSchema.safeParse({
+      ...baseAnalysis,
+      references: [
+        {
+          id: 'kb_1',
+          title: 'Test Article',
+          url: null,
+          snippet: 'Some snippet',
+          score: 0.9,
+        },
+      ],
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.references).toHaveLength(1);
+  });
+});
+
+describe('NextStepsResultSchema with references', () => {
+  it('defaults references to empty array when omitted', () => {
+    const r = NextStepsResultSchema.safeParse({ steps: ['Step one'] });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.references).toEqual([]);
+  });
+
+  it('accepts steps with references', () => {
+    const r = NextStepsResultSchema.safeParse({
+      steps: ['Step one'],
+      references: [
+        {
+          id: 'kb_2',
+          title: 'Guide',
+          url: 'https://example.com',
+          snippet: 'snippet',
+          score: 0.75,
+        },
+      ],
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.references).toHaveLength(1);
   });
 });
 
