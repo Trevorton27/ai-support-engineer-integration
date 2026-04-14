@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  SKIP_ENV_VALIDATION: '1'
+  # Placeholder values so Prisma generate and Next build succeed without real secrets.
+  DATABASE_URL: 'postgresql://user:pass@localhost:5432/db?schema=public'
+  OPENAI_API_KEY: 'sk-ci-placeholder'
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.29.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # NOTE: `next lint` / direct ESLint is currently broken by a circular-ref
+      # bug in eslint-config-next 16.x; re-enable once upstream resolves it.
+
+      - name: Typecheck (copilot-service)
+        run: pnpm --dir apps/copilot-service exec tsc --noEmit
+
+      - name: Typecheck (crm)
+        run: pnpm --dir apps/crm exec tsc --noEmit
+
+      - name: Unit tests (copilot-service)
+        run: pnpm --dir apps/copilot-service run test -- --run
+
+      - name: Unit tests (crm)
+        run: pnpm --dir apps/crm run test
+
+      - name: Build (crm)
+        run: pnpm --dir apps/crm run build
+
+      - name: Build (copilot-service)
+        run: pnpm --dir apps/copilot-service run build

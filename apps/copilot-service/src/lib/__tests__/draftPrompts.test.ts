@@ -64,6 +64,7 @@ const mockAnalysis: AnalysisResult = {
   nextSteps: ['Increase server upload limit to 50MB'],
   riskFlags: ['Customer is on enterprise plan'],
   escalationWhen: ['If fix requires infra change'],
+  references: [],
 };
 
 describe('buildCustomerReplyPrompt', () => {

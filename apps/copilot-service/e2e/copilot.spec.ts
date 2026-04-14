@@ -540,8 +540,12 @@ test.describe('Copilot Panel', () => {
     const upBtn = page.locator('[data-testid="feedback-up"]').first();
     if (await upBtn.count()) {
       await upBtn.click();
-      await expect.poll(() => feedbackBody?.rating).toBe('up');
-      expect(feedbackBody?.suggestionId).toBe(suggestionId);
+      await expect
+        .poll(() => (feedbackBody as Record<string, unknown> | null)?.rating)
+        .toBe('up');
+      expect(
+        (feedbackBody as Record<string, unknown> | null)?.suggestionId,
+      ).toBe(suggestionId);
     }
   });
 
