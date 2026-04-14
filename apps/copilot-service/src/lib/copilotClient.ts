@@ -105,3 +105,14 @@ export async function chatAsync(ticketId: string, message: string) {
     body: JSON.stringify({ ticketId, message }),
   });
 }
+
+export async function sendFeedback(
+  suggestionId: string,
+  rating: 'up' | 'down',
+  comment?: string,
+) {
+  return copilotFetch<{ id: string }>('/feedback', {
+    method: 'POST',
+    body: JSON.stringify({ suggestionId, rating, comment }),
+  });
+}

@@ -9,6 +9,7 @@ import {
   chatAsync,
   pollStatus,
   updateTicketStatusAsync,
+  sendFeedback,
   type TicketSnapshot,
 } from '@/lib/copilotClient';
 
@@ -261,11 +262,16 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
     };
 
     return (
-      <div
-        className={`inline-block rounded px-2 py-1 text-xs ${stateColors[currentJob.state]}`}
-        data-testid="copilot-state"
-      >
-        {stateLabels[currentJob.state]}
+      <div className="flex items-center gap-2">
+        <div
+          className={`inline-block rounded px-2 py-1 text-xs ${stateColors[currentJob.state]}`}
+          data-testid="copilot-state"
+        >
+          {stateLabels[currentJob.state]}
+        </div>
+        {currentJob.state === 'success' && (
+          <FeedbackButtons suggestionId={currentJob.suggestionId} />
+        )}
       </div>
     );
   };
@@ -805,6 +811,52 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
       )}
 
       {renderResult()}
+    </div>
+  );
+}
+
+function FeedbackButtons({ suggestionId }: { suggestionId: string }) {
+  const [submitted, setSubmitted] = useState<'up' | 'down' | null>(null);
+  const [pending, setPending] = useState(false);
+
+  const submit = async (rating: 'up' | 'down') => {
+    if (submitted || pending) return;
+    setPending(true);
+    const res = await sendFeedback(suggestionId, rating);
+    setPending(false);
+    if (res.ok) setSubmitted(rating);
+  };
+
+  return (
+    <div className="flex items-center gap-1" data-testid="feedback-buttons">
+      <button
+        type="button"
+        onClick={() => submit('up')}
+        disabled={!!submitted || pending}
+        data-testid="feedback-up"
+        aria-label="Rate helpful"
+        className={`rounded px-1.5 py-0.5 text-xs ${
+          submitted === 'up'
+            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+            : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+        }`}
+      >
+        👍
+      </button>
+      <button
+        type="button"
+        onClick={() => submit('down')}
+        disabled={!!submitted || pending}
+        data-testid="feedback-down"
+        aria-label="Rate unhelpful"
+        className={`rounded px-1.5 py-0.5 text-xs ${
+          submitted === 'down'
+            ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+            : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+        }`}
+      >
+        👎
+      </button>
     </div>
   );
 }

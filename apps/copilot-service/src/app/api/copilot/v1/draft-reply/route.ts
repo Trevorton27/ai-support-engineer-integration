@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getTicket } from '@/lib/crmClient';
 import {
   draftReply,
@@ -14,6 +14,11 @@ import {
 } from '@/lib/schemas';
 import { executeAsyncJob } from '@/lib/asyncExecution';
 import type { AISuggestionKind } from '@prisma/client';
+import { ok, handleRouteError } from '@/lib/apiResponse';
+import { enforceRateLimit } from '@/lib/rateLimit';
+import { getRateLimitKey, newRequestId } from '@/lib/requestContext';
+import { logger } from '@/lib/logger';
+import { logActivity } from '@/lib/activity';
 
 type DraftType = 'customer_reply' | 'internal_note' | 'escalation';
 
@@ -40,7 +45,12 @@ async function loadLatestAnalysis(ticketId: string): Promise<{
 }
 
 export async function POST(req: NextRequest) {
+  const requestId = newRequestId();
+  const log = logger.child({ route: 'draft-reply', requestId });
   try {
+    const rlKey = await getRateLimitKey(req);
+    enforceRateLimit(`draft-reply:${rlKey}`);
+
     const body = await req.json();
 
     // Phase 3 path: body includes draftType
@@ -59,6 +69,16 @@ export async function POST(req: NextRequest) {
           model: 'gpt-4o-mini',
           state: 'queued',
         },
+      });
+
+      log.info('draft_queued', {
+        suggestionId: suggestion.id,
+        ticketId,
+        draftType,
+      });
+      void logActivity(ticketId, 'AI_DRAFTED', {
+        suggestionId: suggestion.id,
+        draftType,
       });
 
       executeAsyncJob(suggestion.id, async () => {
@@ -84,13 +104,7 @@ export async function POST(req: NextRequest) {
         return draftEscalation(ticketResult.data, analysis, analysisId);
       });
 
-      return NextResponse.json({
-        ok: true,
-        data: {
-          suggestionId: suggestion.id,
-          state: 'queued',
-        },
-      });
+      return ok({ suggestionId: suggestion.id, state: 'queued' });
     }
 
     // Legacy Phase 2 path: tone-only request
@@ -107,37 +121,23 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    log.info('draft_queued_legacy', { suggestionId: suggestion.id, ticketId });
+    void logActivity(ticketId, 'AI_DRAFTED', {
+      suggestionId: suggestion.id,
+      draftType: 'legacy',
+    });
+
     executeAsyncJob(suggestion.id, async () => {
       const ticketResult = await getTicket(ticketId);
       if (!ticketResult.ok) {
         throw new Error(ticketResult.error);
       }
 
-      const draft = await draftReply(ticketResult.data, tone);
-      return draft;
+      return draftReply(ticketResult.data, tone);
     });
 
-    return NextResponse.json({
-      ok: true,
-      data: {
-        suggestionId: suggestion.id,
-        state: 'queued',
-      },
-    });
+    return ok({ suggestionId: suggestion.id, state: 'queued' });
   } catch (err) {
-    if (err instanceof Error && err.name === 'ZodError') {
-      return NextResponse.json(
-        { ok: false, error: 'Invalid request data' },
-        { status: 400 },
-      );
-    }
-
-    return NextResponse.json(
-      {
-        ok: false,
-        error: err instanceof Error ? err.message : 'Unknown error',
-      },
-      { status: 500 },
-    );
+    return handleRouteError(err, 'draft-reply', { requestId });
   }
 }

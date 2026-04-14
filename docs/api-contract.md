@@ -219,6 +219,107 @@ Alias for `/v1/status/:id`. Same response shape.
 
 ---
 
+## Chat Streaming (SSE)
+
+### `POST /v1/chat/stream`
+
+Same request shape as `/v1/chat` but returns a Server-Sent Events stream.
+
+**Request**
+```json
+{ "ticketId": "cuid", "message": "string (1-1000 chars)" }
+```
+
+**Response** — `text/event-stream`
+```
+event: delta
+data: { "text": "partial text" }
+
+event: delta
+data: { "text": " more text" }
+
+event: done
+data: { "answer": "full concatenated answer" }
+```
+
+On failure, a single `event: error` is emitted with `{ "error": "..." }`.
+
+---
+
+## Draft Versions
+
+### `GET /v1/draft-reply/:id/versions`
+
+Returns edit history for a saved draft. Each PATCH on `/v1/draft-reply/:id` creates a new version.
+
+**Response** `200`
+```json
+{
+  "ok": true,
+  "data": {
+    "versions": [
+      { "version": 3, "text": "...", "markedSent": true, "createdAt": "..." },
+      { "version": 2, "text": "...", "markedSent": false, "createdAt": "..." }
+    ]
+  }
+}
+```
+
+---
+
+## Activity Timeline
+
+### `GET /v1/activity?ticketId=...`
+
+Returns AI-generated events for a ticket (analyze, suggest, draft, chat, feedback).
+
+**Response** `200`
+```json
+{
+  "ok": true,
+  "data": {
+    "events": [
+      { "id": "...", "type": "AI_ANALYZED", "payload": { "suggestionId": "..." }, "createdAt": "..." }
+    ]
+  }
+}
+```
+
+Event types: `AI_ANALYZED`, `AI_SUGGESTED`, `AI_DRAFTED`, `AI_CHATTED`, `AI_FEEDBACK`.
+
+---
+
+## Feedback
+
+### `POST /v1/feedback`
+
+Records a thumbs-up/down rating on an AI suggestion.
+
+**Request**
+```json
+{ "suggestionId": "string", "rating": "up" | "down", "comment": "string (optional, max 1000)" }
+```
+
+**Response** `200`
+```json
+{ "ok": true, "data": { "id": "fb_..." } }
+```
+
+### `GET /v1/feedback?suggestionId=...`
+
+Returns all feedback entries for a suggestion.
+
+---
+
+## Rate Limits
+
+All AI endpoints are rate-limited per user (or per IP when unauthenticated):
+- Default: 30 requests per 60 seconds, token-bucket
+- `kb/ingest`: 10 requests per 60 seconds
+- Exceeding the limit returns `429` with `{ code: "rate_limit_exceeded" }`
+
+---
+
 ## Knowledge Base
 
 ### `POST /v1/kb/ingest`

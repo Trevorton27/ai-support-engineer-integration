@@ -66,6 +66,13 @@ export const UpdateStatusRequestSchema = z.object({
   status: z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']),
 });
 
+export const FeedbackRequestSchema = z.object({
+  suggestionId: z.string().min(1),
+  rating: z.enum(['up', 'down']),
+  comment: z.string().max(1000).optional(),
+});
+export type FeedbackRequest = z.infer<typeof FeedbackRequestSchema>;
+
 // Response schemas
 export const AnalysisResultSchema = z.object({
   extractedSignals: z.object({

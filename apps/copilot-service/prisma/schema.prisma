@@ -48,6 +48,11 @@ enum TicketEventType {
   STATUS_CHANGED
   TAG_CHANGED
   ATTACHMENT_ADDED
+  AI_ANALYZED
+  AI_SUGGESTED
+  AI_DRAFTED
+  AI_CHATTED
+  AI_FEEDBACK
 }
 
 // New AI enums
@@ -179,6 +184,28 @@ model AIConversation {
   updatedAt DateTime @updatedAt
 
   @@index([ticketId])
+}
+
+model DraftVersion {
+  id           String   @id @default(cuid())
+  suggestionId String
+  version      Int
+  text         String
+  markedSent   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@unique([suggestionId, version])
+  @@index([suggestionId])
+}
+
+model AIFeedback {
+  id           String   @id @default(cuid())
+  suggestionId String
+  rating       String   // 'up' | 'down'
+  comment      String?
+  createdAt    DateTime @default(now())
+
+  @@index([suggestionId])
 }
 
 model AICache {

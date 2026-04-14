@@ -1,22 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getTicket } from '@/lib/crmClient';
 import { analyzeTicket } from '@/lib/aiProvider';
 import { prisma } from '@/lib/prisma';
 import { AnalyzeRequestSchema } from '@/lib/schemas';
 import { executeAsyncJob } from '@/lib/asyncExecution';
 import { searchKnowledgeBase } from '@/lib/kbRetrieval';
+import { ok, handleRouteError } from '@/lib/apiResponse';
+import { enforceRateLimit } from '@/lib/rateLimit';
+import { getRateLimitKey, newRequestId } from '@/lib/requestContext';
+import { logger } from '@/lib/logger';
+import { logActivity } from '@/lib/activity';
 
 export async function POST(req: NextRequest) {
+  const requestId = newRequestId();
+  const log = logger.child({ route: 'analyze', requestId });
   try {
-    // Parse and validate request
+    const rlKey = await getRateLimitKey(req);
+    enforceRateLimit(`analyze:${rlKey}`);
+
     const body = await req.json();
     const { ticketId } = AnalyzeRequestSchema.parse(body);
 
-    // Create queued suggestion record
     const suggestion = await prisma.aISuggestion.create({
       data: {
         ticketId,
-        type: 'analysis', // Backward compat
+        type: 'analysis',
         kind: 'analysis',
         content: {},
         model: 'gpt-4o-mini',
@@ -24,48 +32,29 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Execute async job
+    log.info('analyze_queued', { suggestionId: suggestion.id, ticketId });
+    void logActivity(ticketId, 'AI_ANALYZED', { suggestionId: suggestion.id });
+
     executeAsyncJob(suggestion.id, async () => {
-      // Fetch ticket from CRM API
       const ticketResult = await getTicket(ticketId);
       if (!ticketResult.ok) {
         throw new Error(ticketResult.error);
       }
 
-      // Search KB for relevant references
       const references = await searchKnowledgeBase(
         `${ticketResult.data.title} ${ticketResult.data.description}`,
         { productArea: ticketResult.data.productArea },
-      ).catch(() => []);
+      ).catch((err) => {
+        log.warn('kb_search_failed', { error: String(err) });
+        return [];
+      });
 
-      // Analyze with AI (includes redaction and validation)
       const analysis = await analyzeTicket(ticketResult.data);
-
       return { ...analysis, references };
     });
 
-    // Return immediately with suggestion ID
-    return NextResponse.json({
-      ok: true,
-      data: {
-        suggestionId: suggestion.id,
-        state: 'queued',
-      },
-    });
+    return ok({ suggestionId: suggestion.id, state: 'queued' });
   } catch (err) {
-    if (err instanceof Error && err.name === 'ZodError') {
-      return NextResponse.json(
-        { ok: false, error: 'Invalid request data' },
-        { status: 400 },
-      );
-    }
-
-    return NextResponse.json(
-      {
-        ok: false,
-        error: err instanceof Error ? err.message : 'Unknown error',
-      },
-      { status: 500 },
-    );
+    return handleRouteError(err, 'analyze', { requestId });
   }
 }

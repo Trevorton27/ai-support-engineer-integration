@@ -15,18 +15,18 @@
 - [x] **2f**: `docs/architecture.md` and `docs/api-contract.md` written
 - [x] **2g**: 113 unit tests passing, both apps build cleanly
 
-## Phase 3 — Product Deepening [PENDING]
+## Phase 3 — Product Deepening [COMPLETE]
 
-- [ ] Structured logging / observability instrumentation across route handlers
-- [ ] Error-handling middleware or shared error response helper
-- [ ] Rate limiting on copilot endpoints
-- [ ] Streaming support for long-running AI responses (SSE or similar)
-- [ ] Draft versioning / history (track edits over time)
-- [ ] Ticket activity timeline in CRM (log copilot actions like "AI analyzed", "draft sent")
-- [ ] Multi-turn conversation memory for `/v1/chat`
-- [ ] Confidence calibration and feedback loop (thumbs up/down on AI outputs)
-- [ ] Additional unit + integration tests for new features
-- [ ] E2E tests covering the full analyze -> poll -> render -> act flow
+- [x] Structured JSON logger (`src/lib/logger.ts`) + instrumentation across route handlers
+- [x] Shared error response helper (`src/lib/apiResponse.ts`) with `ok`, `fail`, `handleRouteError`, `ApiError`
+- [x] Token-bucket rate limiting (`src/lib/rateLimit.ts`) applied to all mutating copilot endpoints
+- [x] SSE streaming endpoint `POST /v1/chat/stream` + `chatAboutTicketStream` generator
+- [x] Draft versioning via `DraftVersion` Prisma model + `GET /v1/draft-reply/:id/versions`
+- [x] Activity timeline via extended `TicketEventType` enum (AI_* values) + `GET /v1/activity?ticketId=...`
+- [x] Multi-turn chat memory via `AIConversation` model + `src/lib/chatMemory.ts` (last 10 turns into prompt, last 40 persisted)
+- [x] Feedback loop: `AIFeedback` model, `POST/GET /v1/feedback`, thumbs up/down UI in CopilotPanel
+- [x] Unit tests: logger, apiResponse, rateLimit, chatMemory, FeedbackRequestSchema (23 new tests; 136 total pass)
+- [x] E2E test: `analyze -> poll -> render -> feedback act` added to `e2e/copilot.spec.ts`
 
 ## Phase 4 — Portfolio Polish [PENDING]
 

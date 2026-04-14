@@ -453,12 +453,18 @@ export async function draftEscalation(
   });
 }
 
+export type ChatHistoryMessage = { role: 'user' | 'assistant'; content: string };
+
 export async function chatAboutTicket(
   ticket: TicketSnapshot,
   question: string,
+  history: ChatHistoryMessage[] = [],
 ): Promise<ChatResult> {
   // Redact sensitive data
   const redacted = redactTicketSnapshot(ticket);
+
+  // Limit history to last 10 turns to control context size
+  const recentHistory = history.slice(-10);
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
@@ -467,6 +473,7 @@ export async function chatAboutTicket(
         role: 'system',
         content: `You are helping analyze this ticket: ${redacted.title}. Always respond with valid JSON in format: { "answer": "..." }`,
       },
+      ...recentHistory,
       { role: 'user', content: question },
     ],
     response_format: { type: 'json_object' },
@@ -478,4 +485,38 @@ export async function chatAboutTicket(
   const validatedResult = ChatResultSchema.parse(rawResult);
 
   return validatedResult;
+}
+
+// Streaming variant of chatAboutTicket. Yields token deltas as they arrive.
+// Consumers are responsible for validation/persistence after the stream ends.
+export async function* chatAboutTicketStream(
+  ticket: TicketSnapshot,
+  question: string,
+  history: ChatHistoryMessage[] = [],
+): AsyncGenerator<string, string, void> {
+  const redacted = redactTicketSnapshot(ticket);
+  const recentHistory = history.slice(-10);
+
+  const stream = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    stream: true,
+    messages: [
+      {
+        role: 'system',
+        content: `You are helping analyze this ticket: ${redacted.title}. Respond with a plain-text helpful answer (no JSON).`,
+      },
+      ...recentHistory,
+      { role: 'user', content: question },
+    ],
+  });
+
+  let full = '';
+  for await (const chunk of stream) {
+    const delta = chunk.choices[0]?.delta?.content ?? '';
+    if (delta) {
+      full += delta;
+      yield delta;
+    }
+  }
+  return full;
 }

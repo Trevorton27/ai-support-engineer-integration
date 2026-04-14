@@ -1,20 +1,17 @@
-import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { ok, fail } from '@/lib/apiResponse';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
     await prisma.$queryRaw`SELECT 1`;
-    return NextResponse.json({
-      ok: true,
-      data: { status: 'healthy', timestamp: new Date().toISOString() },
+    return ok({ status: 'healthy', timestamp: new Date().toISOString() });
+  } catch (err) {
+    logger.error('health_check_failed', {
+      error: err instanceof Error ? err.message : 'Unknown error',
     });
-  } catch {
-    return NextResponse.json(
-      {
-        ok: false,
-        data: { status: 'unhealthy', timestamp: new Date().toISOString() },
-      },
-      { status: 503 },
-    );
+    return fail('Service unhealthy', 503, {
+      data: { status: 'unhealthy', timestamp: new Date().toISOString() },
+    });
   }
 }

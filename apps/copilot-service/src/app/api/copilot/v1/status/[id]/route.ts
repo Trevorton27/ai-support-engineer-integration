@@ -1,10 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { ok, fail, handleRouteError } from '@/lib/apiResponse';
+import { newRequestId } from '@/lib/requestContext';
 
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const requestId = newRequestId();
   try {
     const { id } = await params;
 
@@ -21,23 +24,11 @@ export async function GET(
     });
 
     if (!suggestion) {
-      return NextResponse.json(
-        { ok: false, error: 'Suggestion not found' },
-        { status: 404 },
-      );
+      return fail('Suggestion not found', 404);
     }
 
-    return NextResponse.json({
-      ok: true,
-      data: suggestion,
-    });
+    return ok(suggestion);
   } catch (err) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: err instanceof Error ? err.message : 'Unknown error',
-      },
-      { status: 500 },
-    );
+    return handleRouteError(err, 'status', { requestId });
   }
 }

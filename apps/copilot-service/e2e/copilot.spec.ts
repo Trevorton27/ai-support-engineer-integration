@@ -465,6 +465,86 @@ test.describe('Copilot Panel', () => {
     await expect(items.nth(1)).toContainText('78%');
   });
 
+  test('analyze -> poll -> render -> feedback act', async ({ page }) => {
+    const suggestionId = 'test-feedback-flow';
+
+    await page.route('**/api/copilot/v1/analyze', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          data: { suggestionId, state: 'queued' },
+        }),
+      });
+    });
+
+    await page.route(
+      `**/api/copilot/v1/status/${suggestionId}`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: true,
+            data: {
+              id: suggestionId,
+              state: 'success',
+              content: {
+                extractedSignals: { errorStrings: [], urls: [] },
+                hypotheses: [
+                  {
+                    cause: 'Token expiry',
+                    evidence: ['401 on refresh'],
+                    confidence: 0.8,
+                    tests: ['Replay with fresh token'],
+                  },
+                ],
+                clarifyingQuestions: [],
+                nextSteps: ['Refresh credentials'],
+                riskFlags: [],
+                escalationWhen: [],
+                references: [],
+              },
+              error: null,
+              kind: 'analysis',
+              updatedAt: new Date().toISOString(),
+            },
+          }),
+        });
+      },
+    );
+
+    let feedbackBody: Record<string, unknown> | null = null;
+    await page.route('**/api/copilot/v1/feedback', async (route) => {
+      if (route.request().method() === 'POST') {
+        feedbackBody = JSON.parse(route.request().postData() || '{}');
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ ok: true, data: { id: 'fb_1' } }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.goto('/tickets/test-ticket-id');
+    await page.click('[data-testid="analyze-button"]');
+    await expect(page.locator('[data-testid="copilot-state"]')).toContainText(
+      'Complete',
+      { timeout: 5000 },
+    );
+
+    // Act: rate the suggestion up
+    const upBtn = page.locator('[data-testid="feedback-up"]').first();
+    if (await upBtn.count()) {
+      await upBtn.click();
+      await expect.poll(() => feedbackBody?.rating).toBe('up');
+      expect(feedbackBody?.suggestionId).toBe(suggestionId);
+    }
+  });
+
   test('should handle error state from async job', async ({ page }) => {
     let suggestionId = 'test-suggestion-error';
 

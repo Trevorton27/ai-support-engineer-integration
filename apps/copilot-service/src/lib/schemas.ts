@@ -8,6 +8,7 @@ export {
   DraftSaveRequestSchema,
   ChatRequestSchema,
   UpdateStatusRequestSchema,
+  FeedbackRequestSchema,
   // Response schemas
   AnalysisResultSchema,
   NextStepsResultSchema,

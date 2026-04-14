@@ -1,7 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { generateEmbedding } from '@/lib/embeddings';
+import { ok, handleRouteError } from '@/lib/apiResponse';
+import { enforceRateLimit } from '@/lib/rateLimit';
+import { getRateLimitKey, newRequestId } from '@/lib/requestContext';
+import { logger } from '@/lib/logger';
 
 const IngestSchema = z.object({
   title: z.string().min(1),
@@ -11,7 +15,12 @@ const IngestSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const requestId = newRequestId();
+  const log = logger.child({ route: 'kb-ingest', requestId });
   try {
+    const rlKey = await getRateLimitKey(req);
+    enforceRateLimit(`kb-ingest:${rlKey}`, { capacity: 10, refillPerSec: 10 / 60 });
+
     const body = await req.json();
     const { title, content, url, productArea } = IngestSchema.parse(body);
 
@@ -34,21 +43,9 @@ export async function POST(req: NextRequest) {
       now,
     );
 
-    return NextResponse.json({ ok: true, data: { id } });
+    log.info('kb_ingested', { id, productArea });
+    return ok({ id });
   } catch (err) {
-    if (err instanceof Error && err.name === 'ZodError') {
-      return NextResponse.json(
-        { ok: false, error: 'Invalid request data' },
-        { status: 400 },
-      );
-    }
-
-    return NextResponse.json(
-      {
-        ok: false,
-        error: err instanceof Error ? err.message : 'Unknown error',
-      },
-      { status: 500 },
-    );
+    return handleRouteError(err, 'kb-ingest', { requestId });
   }
 }
