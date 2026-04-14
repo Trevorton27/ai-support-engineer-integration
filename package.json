@@ -1,13 +1,37 @@
 {
-  "name": "ai-support-engineer-integration",
+  "name": "ai-support-engineer",
   "private": true,
   "scripts": {
-    "dev": "concurrently --names \"crm,tickets\" --prefix-colors \"blue,green\" \"pnpm --dir sample-crm run dev\" \"pnpm --dir smart-ticket-system run dev\" \"wait-on tcp:3000 && echo '🚀 sample-crm ready on :3000'\" \"wait-on tcp:3001 && echo '🚀 smart-ticket-system ready on :3001'\"",
-    "dev:crm": "pnpm --dir sample-crm run dev",
-    "dev:tickets": "pnpm --dir smart-ticket-system run dev"
+    "dev": "concurrently --names \"crm,copilot\" --prefix-colors \"blue,green\" \"pnpm --dir apps/crm run dev\" \"pnpm --dir apps/copilot-service run dev\" \"wait-on tcp:3000 && echo '🚀 crm ready on :3000'\" \"wait-on tcp:3001 && echo '🚀 copilot-service ready on :3001'\"",
+    "dev:crm": "pnpm --dir apps/crm run dev",
+    "dev:copilot": "pnpm --dir apps/copilot-service run dev",
+    "test": "pnpm --dir apps/copilot-service run test",
+    "test:e2e": "pnpm --dir apps/copilot-service run test:e2e",
+    "build": "pnpm --dir apps/crm run build && pnpm --dir apps/copilot-service run build"
   },
   "devDependencies": {
+    "@tailwindcss/oxide-linux-x64-gnu": "^4.2.2",
     "concurrently": "^9.2.1",
     "wait-on": "^9.0.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@clerk/shared",
+      "@prisma/client",
+      "@prisma/engines",
+      "@tailwindcss/oxide",
+      "esbuild",
+      "prisma",
+      "sharp",
+      "unrs-resolver"
+    ],
+    "supportedArchitectures": {
+      "os": [
+        "current"
+      ],
+      "cpu": [
+        "current"
+      ]
+    }
   }
 }
