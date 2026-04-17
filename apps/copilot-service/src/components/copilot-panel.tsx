@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   analyzeTicketAsync,
   suggestNextStepsAsync,
@@ -94,6 +94,20 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
   const [similarLoading, setSimilarLoading] = useState(false);
   const [applyingCaseId, setApplyingCaseId] = useState<string | null>(null);
 
+  // Toast notifications
+  type Toast = { id: number; message: string; type: 'success' | 'error' };
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const addToast = useCallback((message: string, type: Toast['type'] = 'success') => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
+  }, []);
+
+  // Demo mode
+  const [isDemoRunning, setIsDemoRunning] = useState(false);
+  // Fires when current async job reaches success — used by demo runner
+  const onJobCompleteRef = useRef<((content: any) => void) | null>(null);
+
   const resultTypeRef = useRef(resultType);
   useEffect(() => {
     resultTypeRef.current = resultType;
@@ -161,6 +175,8 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
             setDraftMarkedSent(Boolean(data.content.markedSent));
             setDraftSaved(false);
           }
+          onJobCompleteRef.current?.(data.content);
+          onJobCompleteRef.current = null;
         }
       }
     }, 1000); // Poll every second
@@ -217,12 +233,16 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
     setDraftSaving(false);
     if (res.ok) {
       setDraftSaved(true);
+      addToast('Draft saved');
+    } else {
+      addToast('Failed to save draft', 'error');
     }
   };
 
   const handleCopyDraft = async () => {
     await navigator.clipboard.writeText(draftEditText);
     setDraftCopied(true);
+    addToast('Copied to clipboard');
     setTimeout(() => setDraftCopied(false), 1500);
   };
 
@@ -232,6 +252,9 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
     if (res.ok) {
       setDraftMarkedSent(true);
       setDraftSaved(true);
+      addToast('Marked as sent');
+    } else {
+      addToast('Failed to mark as sent', 'error');
     }
   };
 
@@ -279,7 +302,61 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
       setDraftCopied(false);
       setCurrentJob({ suggestionId: data.suggestionId, state: data.state });
       localStorage.setItem(`draft-customer_reply-${snapshot.id}`, data.suggestionId);
+      addToast('Applying pattern — generating draft…');
+    } else {
+      addToast('Failed to apply pattern', 'error');
     }
+  };
+
+  const handleRunDemo = async () => {
+    setIsDemoRunning(true);
+    addToast('Demo starting — analyzing ticket…');
+
+    // Step 1: Analyze
+    setResult(null);
+    setResultType('analysis');
+    const analyzeRes = await analyzeTicketAsync(snapshot.id);
+    if (!analyzeRes.ok) {
+      addToast('Demo: analyze failed', 'error');
+      setIsDemoRunning(false);
+      return;
+    }
+    setCurrentJob(analyzeRes.data as SuggestionState);
+
+    // Wait for analysis to complete
+    await new Promise<void>((resolve) => {
+      onJobCompleteRef.current = () => resolve();
+    });
+    addToast('Analysis complete — generating draft…');
+
+    // Step 2: Generate customer reply
+    setResult(null);
+    setResultType('draft');
+    setDraftType('customer_reply');
+    setDraftEditText('');
+    setDraftSuggestionId(null);
+    setDraftSaved(false);
+    setDraftMarkedSent(false);
+    setDraftCopied(false);
+
+    const draftRes = await generateDraftAsync(snapshot.id, 'customer_reply', 'professional');
+    if (!draftRes.ok) {
+      addToast('Demo: draft generation failed', 'error');
+      setIsDemoRunning(false);
+      return;
+    }
+    const draftData = draftRes.data as { suggestionId: string; state: SuggestionState['state'] };
+    setCurrentJob({ suggestionId: draftData.suggestionId, state: draftData.state });
+    setDraftSuggestionId(draftData.suggestionId);
+    localStorage.setItem(`draft-customer_reply-${snapshot.id}`, draftData.suggestionId);
+
+    // Wait for draft to complete
+    await new Promise<void>((resolve) => {
+      onJobCompleteRef.current = () => resolve();
+    });
+
+    setIsDemoRunning(false);
+    addToast('Demo complete — edit and save the draft below');
   };
 
   const renderStateIndicator = () => {
@@ -308,7 +385,10 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
           {stateLabels[currentJob.state]}
         </div>
         {currentJob.state === 'success' && (
-          <FeedbackButtons suggestionId={currentJob.suggestionId} />
+          <FeedbackButtons
+            suggestionId={currentJob.suggestionId}
+            onRate={(r) => addToast(r === 'up' ? 'Thanks for the feedback!' : 'Feedback recorded')}
+          />
         )}
       </div>
     );
@@ -339,14 +419,20 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
       return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
     };
 
+    const copyText = (text: string) => {
+      navigator.clipboard.writeText(text).then(() => addToast('Copied to clipboard'));
+    };
+
     return (
       <div className="space-y-4" data-testid="analysis-summary">
 
         {/* Extracted Signals */}
-        <div>
-          <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Extracted Signals
-          </h4>
+        <details open>
+        <summary className="mb-1 flex cursor-pointer items-center gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 list-none">
+          <span className="mr-auto">Extracted Signals</span>
+          <span className="text-gray-400 text-[10px]">▾</span>
+        </summary>
+        <div className="mt-1">
           {!hasSignals ? (
             <p className="text-xs text-gray-400 dark:text-gray-500">No signals detected</p>
           ) : (
@@ -386,13 +472,21 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
             </div>
           )}
         </div>
+        </details>
 
         {/* Hypotheses */}
         {data.hypotheses.length > 0 && (
-          <div>
-            <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Hypotheses
-            </h4>
+          <details open>
+          <summary className="mb-1 flex cursor-pointer items-center gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 list-none">
+            <span className="mr-auto">Hypotheses ({data.hypotheses.length})</span>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); copyText(data.hypotheses.map(h => `${h.cause} (${Math.round(h.confidence*100)}%)`).join('\n')); }}
+              className="rounded px-1.5 py-0.5 text-[10px] text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              data-testid="copy-hypotheses"
+            >Copy</button>
+            <span className="text-gray-400 text-[10px]">▾</span>
+          </summary>
             <div className="space-y-2">
               {data.hypotheses.map((h, i) => (
                 <div key={i} className="rounded-md border border-gray-200 p-2 dark:border-gray-700">
@@ -425,15 +519,16 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
                 </div>
               ))}
             </div>
-          </div>
+          </details>
         )}
 
         {/* Clarifying Questions */}
         {data.clarifyingQuestions.length > 0 && (
           <div>
-            <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Clarifying Questions
-            </h4>
+            <div className="mb-1 flex items-center gap-1">
+              <h4 className="mr-auto text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Clarifying Questions</h4>
+              <button type="button" onClick={() => copyText(data.clarifyingQuestions.join('\n'))} className="rounded px-1.5 py-0.5 text-[10px] text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Copy</button>
+            </div>
             <ol className="ml-4 list-decimal space-y-1">
               {data.clarifyingQuestions.map((q, i) => (
                 <li key={i} className="text-sm">{q}</li>
@@ -445,9 +540,10 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
         {/* Next Steps */}
         {data.nextSteps.length > 0 && (
           <div>
-            <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Next Steps
-            </h4>
+            <div className="mb-1 flex items-center gap-1">
+              <h4 className="mr-auto text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Next Steps</h4>
+              <button type="button" onClick={() => copyText(data.nextSteps.join('\n'))} className="rounded px-1.5 py-0.5 text-[10px] text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Copy</button>
+            </div>
             <ol className="ml-4 list-decimal space-y-1">
               {data.nextSteps.map((step, i) => (
                 <li key={i} className="text-sm">{step}</li>
@@ -552,7 +648,15 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
     return (
       <div className="space-y-4">
         <div>
-          <span className="font-medium">Next Steps:</span>
+          <div className="mb-1 flex items-center gap-1">
+            <span className="mr-auto font-medium">Next Steps</span>
+            <button
+              type="button"
+              onClick={() => navigator.clipboard.writeText(data.steps.join('\n')).then(() => addToast('Copied to clipboard'))}
+              className="rounded px-1.5 py-0.5 text-[10px] text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              data-testid="copy-steps"
+            >Copy</button>
+          </div>
           <ul className="ml-5 mt-1 list-disc">
             {data.steps.map((step, i) => (
               <li key={i}>{step}</li>
@@ -631,13 +735,36 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
   const renderChatResult = (data: { answer: string }) => {
     return (
       <div>
-        <span className="font-medium">Answer:</span>
+        <div className="mb-1 flex items-center gap-1">
+          <span className="mr-auto font-medium">Answer</span>
+          <button
+            type="button"
+            onClick={() => navigator.clipboard.writeText(data.answer).then(() => addToast('Copied to clipboard'))}
+            className="rounded px-1.5 py-0.5 text-[10px] text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            data-testid="copy-chat-answer"
+          >Copy</button>
+        </div>
         <p className="mt-1">{data.answer}</p>
       </div>
     );
   };
 
   const renderResult = () => {
+    // Loading skeleton while waiting for the first result
+    if (isLoading && !result) {
+      return (
+        <div
+          className="animate-pulse space-y-2 rounded-md bg-gray-50 p-3 dark:bg-gray-900"
+          data-testid="result-skeleton"
+        >
+          <div className="h-3 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
+          <div className="h-3 w-1/2 rounded bg-gray-200 dark:bg-gray-700" />
+          <div className="h-3 w-2/3 rounded bg-gray-200 dark:bg-gray-700" />
+          <div className="h-3 w-1/3 rounded bg-gray-200 dark:bg-gray-700" />
+        </div>
+      );
+    }
+
     if (!result) return null;
 
     let content;
@@ -656,14 +783,6 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
     return (
       <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-900">
         {content}
-        <button
-          onClick={() => {
-            navigator.clipboard.writeText(JSON.stringify(result, null, 2));
-          }}
-          className="mt-2 rounded-md bg-gray-700 px-2 py-1 text-xs font-medium text-white hover:bg-gray-600 dark:bg-gray-300 dark:text-gray-900 dark:hover:bg-gray-400"
-        >
-          Copy JSON
-        </button>
       </div>
     );
   };
@@ -676,7 +795,15 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
       className="space-y-3 rounded-lg border border-gray-200 p-4 dark:border-gray-800"
       data-testid="copilot-panel"
     >
-      <h3 className="text-sm font-semibold">AI Copilot</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">AI Copilot</h3>
+        <span
+          className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+          data-testid="provider-badge"
+        >
+          {process.env.NEXT_PUBLIC_AI_PROVIDER ?? 'openai'}
+        </span>
+      </div>
 
       {renderStateIndicator()}
 
@@ -747,6 +874,14 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
           className="w-full rounded-md bg-gray-800 px-3 py-1.5 text-center text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 dark:bg-gray-200 dark:text-gray-900 dark:hover:bg-gray-300"
         >
           Suggest Next Steps
+        </button>
+        <button
+          onClick={handleRunDemo}
+          disabled={isLoading || isDemoRunning}
+          data-testid="demo-button"
+          className="w-full rounded-md border border-indigo-300 px-3 py-1.5 text-center text-sm font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50 dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950"
+        >
+          {isDemoRunning ? 'Running demo…' : '▶ Run Demo'}
         </button>
       </div>
 
@@ -920,11 +1055,36 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
           </div>
         )}
       </div>
+
+      {/* Toast notifications */}
+      {toasts.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2" data-testid="toast-container">
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              data-testid="toast"
+              className={`rounded-md px-3 py-2 text-sm font-medium shadow-lg ${
+                t.type === 'success'
+                  ? 'bg-gray-800 text-white dark:bg-gray-100 dark:text-gray-900'
+                  : 'bg-red-600 text-white dark:bg-red-500'
+              }`}
+            >
+              {t.message}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function FeedbackButtons({ suggestionId }: { suggestionId: string }) {
+function FeedbackButtons({
+  suggestionId,
+  onRate,
+}: {
+  suggestionId: string;
+  onRate?: (rating: 'up' | 'down') => void;
+}) {
   const [submitted, setSubmitted] = useState<'up' | 'down' | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -933,7 +1093,10 @@ function FeedbackButtons({ suggestionId }: { suggestionId: string }) {
     setPending(true);
     const res = await sendFeedback(suggestionId, rating);
     setPending(false);
-    if (res.ok) setSubmitted(rating);
+    if (res.ok) {
+      setSubmitted(rating);
+      onRate?.(rating);
+    }
   };
 
   return (

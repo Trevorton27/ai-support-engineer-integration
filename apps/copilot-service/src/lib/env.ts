@@ -6,6 +6,7 @@ const EnvSchema = z.object({
   CRM_API_BASE_URL: z.string().url().optional(),
   CLERK_SECRET_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1).optional(),
+  NEXT_PUBLIC_AI_PROVIDER: z.string().optional(),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
   NODE_ENV: z.enum(['development', 'test', 'production']).optional(),
 });

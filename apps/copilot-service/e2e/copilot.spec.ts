@@ -649,6 +649,127 @@ test.describe('Copilot Panel', () => {
     await page.click('[data-testid="draft-save-button"]');
   });
 
+  test('happy demo path: analyze → draft → edit → save → copy → feedback', async ({ page }) => {
+    const analyzeId = 'demo-analyze-id';
+    const draftId = 'demo-draft-id';
+
+    // Mock analyze
+    await page.route('**/api/copilot/v1/analyze', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, data: { suggestionId: analyzeId, state: 'queued' } }),
+      });
+    });
+
+    // Mock analyze status — immediately success
+    await page.route(`**/api/copilot/v1/status/${analyzeId}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          data: {
+            id: analyzeId,
+            state: 'success',
+            kind: 'analysis',
+            content: {
+              extractedSignals: { errorStrings: ['500 Internal Server Error'], urls: [] },
+              hypotheses: [{ cause: 'SAML IdP misconfiguration', evidence: ['500 on SSO'], confidence: 0.9, tests: ['Check IdP metadata'] }],
+              clarifyingQuestions: ['Which IdP are you using?'],
+              nextSteps: ['Verify SAML metadata', 'Check certificate expiry'],
+              riskFlags: [],
+              escalationWhen: [],
+              references: [],
+            },
+            error: null,
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      });
+    });
+
+    // Mock draft-reply
+    await page.route('**/api/copilot/v1/draft-reply', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, data: { suggestionId: draftId, state: 'queued' } }),
+      });
+    });
+
+    // Mock draft status — immediately success
+    await page.route(`**/api/copilot/v1/status/${draftId}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          data: {
+            id: draftId,
+            state: 'success',
+            kind: 'draft_customer_reply',
+            content: {
+              text: 'Hi there, our team is investigating the SSO issue. We will update you shortly.',
+              draftType: 'customer_reply',
+              tone: 'professional',
+              usedAnalysisId: analyzeId,
+              markedSent: false,
+            },
+            error: null,
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      });
+    });
+
+    // Mock draft save
+    await page.route(`**/api/copilot/v1/draft-reply/${draftId}`, async (route) => {
+      if (route.request().method() === 'PATCH') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ ok: true, data: { id: draftId, content: {} } }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    // Mock similar cases (empty for this test)
+    await page.route('**/api/copilot/v1/similar', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, data: { cases: [] } }),
+      });
+    });
+
+    await page.goto('/tickets/test-ticket-id');
+
+    // Click the Demo button
+    await page.click('[data-testid="demo-button"]');
+
+    // Wait for analysis to render
+    await expect(page.locator('[data-testid="analysis-summary"]')).toBeVisible({ timeout: 8000 });
+
+    // Wait for draft textarea to populate
+    await expect(page.locator('[data-testid="draft-edit-textarea"]')).toHaveValue(
+      /SSO issue/,
+      { timeout: 8000 },
+    );
+
+    // Edit the draft
+    await page.fill('[data-testid="draft-edit-textarea"]', 'Updated: investigating the SSO issue now.');
+
+    // Save
+    await page.click('[data-testid="draft-save-button"]');
+    await expect(page.locator('[data-testid="toast"]').first()).toBeVisible({ timeout: 3000 });
+
+    // Provider badge should be visible
+    await expect(page.locator('[data-testid="provider-badge"]')).toBeVisible();
+  });
+
   test('should handle error state from async job', async ({ page }) => {
     let suggestionId = 'test-suggestion-error';
 

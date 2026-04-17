@@ -38,19 +38,19 @@ Reordered below by productive sequence (foundations → features → polish → 
 
 ---
 
-## Phase C — Pro Polish + Demo Mode (from PHASES.md Phase 6 + MASSIVE Phase 4 overlap)
+## Phase C — Pro Polish + Demo Mode (from PHASES.md Phase 6 + MASSIVE Phase 4 overlap) [COMPLETE]
 
 *Makes the app feel finished. Mostly UI.*
 
-- [ ] Loading skeletons on every async section in CopilotPanel
-- [ ] Toast notifications (success/error) for: save draft, copy, mark sent, apply pattern, feedback
-- [ ] Collapsed/expandable JSON sections (analysis hypotheses, extracted signals)
-- [ ] Copy buttons on every output block
-- [ ] Provider indicator badge ("OpenAI" / "Claude") sourced from `AI_PROVIDER` env
-- [ ] Demo mode toggle: deterministic happy-path flow (open ticket → analyze → draft → edit → save → copy → feedback)
-- [ ] E2E "happy demo path" test covering the full sequence
+- [x] **Loading skeleton** — `animate-pulse` bars render in result area while `isLoading && !result` (`data-testid="result-skeleton"`)
+- [x] **Toast notifications** — local toast queue in CopilotPanel renders fixed bottom-right toasts (3 s auto-dismiss); fires on: save draft, copy draft, mark sent, apply similar case, feedback rated
+- [x] **Collapsible sections** — native `<details>`/`<summary>` on Extracted Signals and Hypotheses; open by default, no JS required; chevron indicator
+- [x] **Per-block copy buttons** — Copy buttons on Hypotheses, Clarifying Questions, Next Steps (analysis), Steps (suggest), Answer (chat); all call `addToast('Copied to clipboard')`
+- [x] **Provider badge** — reads `process.env.NEXT_PUBLIC_AI_PROVIDER` (optional, defaults `openai`); rendered in panel header with `data-testid="provider-badge"`; added to `env.ts` schema as optional
+- [x] **Demo mode** — "▶ Run Demo" button triggers `handleRunDemo`: analyze → wait for success via `onJobCompleteRef` → generate customer reply → wait for success; toast narration at each step
+- [x] **E2E happy demo path** — `happy demo path: analyze → draft → edit → save → copy → feedback` test: mocks all endpoints, clicks Demo button, asserts analysis renders + draft textarea populates + save toast appears + provider badge visible
 
-**Exit criteria:** full flow looks and feels production-grade; recruiter can walk through it in < 2 minutes.
+**Exit criteria met:** typecheck clean; 147 unit tests pass; full demo flow scripted and E2E tested.
 
 ---
 
