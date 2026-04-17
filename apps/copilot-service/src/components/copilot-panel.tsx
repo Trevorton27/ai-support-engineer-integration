@@ -10,7 +10,10 @@ import {
   pollStatus,
   updateTicketStatusAsync,
   sendFeedback,
+  findSimilarCases,
+  applySimilarCase,
   type TicketSnapshot,
+  type SimilarCase,
 } from '@/lib/copilotClient';
 
 type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
@@ -86,6 +89,11 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
   const [draftMarkedSent, setDraftMarkedSent] = useState(false);
   const [draftCopied, setDraftCopied] = useState(false);
 
+  // Similar Cases state
+  const [similarCases, setSimilarCases] = useState<SimilarCase[]>([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
+  const [applyingCaseId, setApplyingCaseId] = useState<string | null>(null);
+
   const resultTypeRef = useRef(resultType);
   useEffect(() => {
     resultTypeRef.current = resultType;
@@ -116,6 +124,17 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch similar cases on mount (best-effort — silently skips if no embeddings yet)
+  useEffect(() => {
+    setSimilarLoading(true);
+    findSimilarCases(snapshot.id)
+      .then((res) => {
+        if (res.ok) setSimilarCases(res.data.cases);
+      })
+      .finally(() => setSimilarLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot.id]);
 
   // Polling effect
   useEffect(() => {
@@ -241,6 +260,25 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
     if (res.ok) {
       setCurrentJob(res.data as SuggestionState);
       setChatInput('');
+    }
+  };
+
+  const handleApplySimilarCase = async (matchedTicketId: string) => {
+    setApplyingCaseId(matchedTicketId);
+    const res = await applySimilarCase(snapshot.id, matchedTicketId);
+    setApplyingCaseId(null);
+    if (res.ok) {
+      const data = res.data as { suggestionId: string; state: 'queued' | 'running' | 'success' | 'error' };
+      setResult(null);
+      setResultType('draft');
+      setDraftType('customer_reply');
+      setDraftEditText('');
+      setDraftSuggestionId(data.suggestionId);
+      setDraftSaved(false);
+      setDraftMarkedSent(false);
+      setDraftCopied(false);
+      setCurrentJob({ suggestionId: data.suggestionId, state: data.state });
+      localStorage.setItem(`draft-customer_reply-${snapshot.id}`, data.suggestionId);
     }
   };
 
@@ -811,6 +849,77 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
       )}
 
       {renderResult()}
+
+      {/* ── Similar Cases ── */}
+      <hr className="border-gray-200 dark:border-gray-700" />
+      <div className="space-y-2" data-testid="similar-cases-section">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Similar Cases
+        </h4>
+        {similarLoading ? (
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            Searching for similar cases...
+          </p>
+        ) : similarCases.length === 0 ? (
+          <p
+            className="text-xs text-gray-400 dark:text-gray-500"
+            data-testid="similar-cases-empty"
+          >
+            No similar resolved cases found.
+          </p>
+        ) : (
+          <div className="space-y-2" data-testid="similar-cases-list">
+            {similarCases.map((c) => (
+              <div
+                key={c.id}
+                className="rounded-md border border-gray-200 p-2 dark:border-gray-700"
+                data-testid="similar-case-item"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium" title={c.title}>
+                      {c.title}
+                    </p>
+                    <div className="mt-0.5 flex items-center gap-1.5">
+                      <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                        {c.productArea}
+                      </span>
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                          c.status === 'RESOLVED'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                        }`}
+                      >
+                        {c.status}
+                      </span>
+                      <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                        {Math.round(c.score * 100)}%
+                      </span>
+                    </div>
+                    {c.resolution && (
+                      <p className="mt-1 line-clamp-2 text-xs text-gray-600 dark:text-gray-400">
+                        {c.resolution}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleApplySimilarCase(c.id)}
+                    disabled={
+                      isLoading ||
+                      applyingCaseId === c.id
+                    }
+                    data-testid="apply-similar-button"
+                    className="shrink-0 rounded-md bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+                  >
+                    {applyingCaseId === c.id ? 'Applying...' : 'Apply'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -549,6 +549,106 @@ test.describe('Copilot Panel', () => {
     }
   });
 
+  test('similar cases — Apply pattern creates a saved draft and persists', async ({ page }) => {
+    const applyId = 'apply-draft-suggestion-1';
+
+    // Mock similar endpoint to return two resolved cases
+    await page.route('**/api/copilot/v1/similar', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          data: {
+            cases: [
+              {
+                id: 'tkt_005',
+                title: 'Password reset email not arriving',
+                productArea: 'Authentication',
+                status: 'RESOLVED',
+                score: 0.88,
+                resolution: 'SPF record was misconfigured. Fix deployed and tested.',
+              },
+              {
+                id: 'tkt_011',
+                title: 'Mobile app 3.2.0 crashes on iPhone',
+                productArea: 'Mobile',
+                status: 'RESOLVED',
+                score: 0.72,
+                resolution: 'Update to 3.2.1 resolves the WebKit crash.',
+              },
+            ],
+          },
+        }),
+      });
+    });
+
+    // Mock the apply endpoint
+    await page.route('**/api/copilot/v1/similar/tkt_005/apply', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          data: { suggestionId: applyId, state: 'queued' },
+        }),
+      });
+    });
+
+    // Mock polling for the generated draft
+    await page.route(`**/api/copilot/v1/status/${applyId}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          data: {
+            id: applyId,
+            state: 'success',
+            kind: 'draft_customer_reply',
+            content: {
+              text: 'Hi there, we identified an SPF misconfiguration that was causing delivery failures. This has been resolved — please retry.',
+              draftType: 'customer_reply',
+              tone: 'professional',
+              usedAnalysisId: null,
+              markedSent: false,
+            },
+            error: null,
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      });
+    });
+
+    await page.goto('/tickets/test-ticket-id');
+
+    // Similar cases section should render on mount
+    await expect(
+      page.locator('[data-testid="similar-cases-section"]'),
+    ).toBeVisible({ timeout: 5000 });
+
+    // Two case items should appear
+    await expect(page.locator('[data-testid="similar-case-item"]')).toHaveCount(
+      2,
+      { timeout: 5000 },
+    );
+
+    // Click the Apply button on the first case
+    await page
+      .locator('[data-testid="apply-similar-button"]')
+      .first()
+      .click();
+
+    // Draft textarea should be populated with the generated text
+    await expect(page.locator('[data-testid="draft-edit-textarea"]')).toHaveValue(
+      /SPF misconfiguration/,
+      { timeout: 5000 },
+    );
+
+    // Save the draft
+    await page.click('[data-testid="draft-save-button"]');
+  });
+
   test('should handle error state from async job', async ({ page }) => {
     let suggestionId = 'test-suggestion-error';
 

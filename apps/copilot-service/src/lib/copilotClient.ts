@@ -116,3 +116,35 @@ export async function sendFeedback(
     body: JSON.stringify({ suggestionId, rating, comment }),
   });
 }
+
+export type SimilarCase = {
+  id: string;
+  title: string;
+  productArea: string;
+  status: string;
+  score: number;
+  resolution: string | null;
+};
+
+export async function findSimilarCases(
+  ticketId: string,
+  options?: { productArea?: string; limit?: number },
+) {
+  return copilotFetch<{ cases: SimilarCase[] }>('/similar', {
+    method: 'POST',
+    body: JSON.stringify({ ticketId, ...options }),
+  });
+}
+
+export async function applySimilarCase(
+  ticketId: string,
+  matchedTicketId: string,
+) {
+  return copilotFetch<{ suggestionId: string; state: string }>(
+    `/similar/${matchedTicketId}/apply`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ ticketId }),
+    },
+  );
+}

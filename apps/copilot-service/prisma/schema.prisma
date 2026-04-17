@@ -71,6 +71,7 @@ enum AISuggestionKind {
   draft_internal_note
   draft_escalation
   chat
+  similar_cases
 }
 
 // CRM models
@@ -114,6 +115,8 @@ model Ticket {
   messages     TicketMessage[]
   attachments  Attachment[]
   events       TicketEvent[]
+  embedding            Unsupported("vector(1536)")?
+  embeddingUpdatedAt   DateTime?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 }

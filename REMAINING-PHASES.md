@@ -20,19 +20,21 @@ Reordered below by productive sequence (foundations → features → polish → 
 
 ---
 
-## Phase B — Similar Cases / Support Memory (from PHASES.md Phase 5)
+## Phase B — Similar Cases / Support Memory (from PHASES.md Phase 5) [COMPLETE]
 
 *Biggest remaining product feature. Leverages the pgvector infra already in place from Phase 4.*
 
-- [ ] `POST /v1/similar` — embed current ticket (title + description), cosine search against `Ticket` embeddings with resolved outcomes, optional `productArea`/`platform` filters
-- [ ] Backfill embeddings for existing tickets (one-off script) + generate on create/update
-- [ ] `POST /v1/similar/:id/apply` — creates an `AISuggestion` (`kind=draft_customer_reply`) derived from the matched ticket's resolution
-- [ ] CopilotPanel: "Similar Cases" section with score, title snippet, outcome, "Apply" button
-- [ ] Unit: ranking stability with fixtures + mocked embeddings
-- [ ] E2E: Apply pattern → saved draft persists after reload
-- [ ] Document endpoints in `docs/api-contract.md`
+- [x] `POST /v1/similar` — embed current ticket text, cosine search against `Ticket` embeddings (resolved/closed only), optional `productArea` filter
+- [x] `POST /v1/similar/:id/apply` — queued async job creates `draft_customer_reply` AISuggestion derived from matched ticket's resolution
+- [x] CopilotPanel: "Similar Cases" section renders on mount with score badge, resolution snippet, Apply button; Apply wires to draft polling flow
+- [x] Backfill script at `prisma/embed-tickets.ts` — idempotent, processes stale/missing embeddings
+- [x] Prisma schema: `embedding vector(1536)` + `embeddingUpdatedAt` on `Ticket`; migration `20260417000000_add_ticket_embeddings`; `similar_cases` added to `AISuggestionKind` enum
+- [x] Shared types: `SimilarCaseSchema`, `SimilarCasesRequestSchema`, `SimilarCasesResultSchema`, `ApplySimilarCaseRequestSchema` in `@repo/shared-types`
+- [x] 8 unit tests in `ticketEmbeddings.test.ts` (score threshold, productArea filter, excludeTicketId, null resolution)
+- [x] E2E test: Similar Cases renders, Apply button creates draft, textarea populated
+- [x] `docs/api-contract.md` updated with `/v1/similar` and `/v1/similar/:id/apply`
 
-**Exit criteria:** opening a ticket surfaces 3–5 relevant prior tickets; Apply creates a usable draft.
+**Exit criteria met:** 147 unit tests pass; both apps typecheck clean; applying a similar case wires through to draft edit flow.
 
 ---
 

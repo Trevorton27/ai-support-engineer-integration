@@ -343,6 +343,66 @@ Ingests a knowledge base article with auto-generated vector embedding.
 
 ---
 
+## Similar Cases
+
+### `POST /v1/similar`
+
+Finds resolved/closed tickets semantically similar to a given ticket using vector cosine similarity.
+
+**Request**
+```json
+{ "ticketId": "cuid", "productArea": "string (optional)", "limit": 1-10 }
+```
+
+**Response** `200`
+```json
+{
+  "ok": true,
+  "data": {
+    "cases": [
+      {
+        "id": "tkt_001",
+        "title": "SSO login returns 500 for Chrome users",
+        "productArea": "Authentication",
+        "status": "RESOLVED",
+        "score": 0.91,
+        "resolution": "Last agent/system message from the matched ticket"
+      }
+    ]
+  }
+}
+```
+
+Returns `{ cases: [] }` when no ticket embeddings exist (run `pnpm tsx prisma/embed-tickets.ts` to backfill).
+
+### `POST /v1/similar/:id/apply`
+
+Creates a `draft_customer_reply` AISuggestion derived from the resolution of the matched ticket. Returns a queued async job polled via `GET /v1/status/:suggestionId`.
+
+**Request**
+```json
+{ "ticketId": "cuid" }
+```
+
+**Response** `200`
+```json
+{ "ok": true, "data": { "suggestionId": "string", "state": "queued" } }
+```
+
+**Polled result shape**:
+```json
+{
+  "text": "string",
+  "draftType": "customer_reply",
+  "tone": "professional",
+  "usedAnalysisId": null,
+  "markedSent": false,
+  "sourceSimilarTicketId": "string"
+}
+```
+
+---
+
 ## Error Codes
 
 | Status | Meaning |
@@ -364,3 +424,5 @@ All request and response schemas are defined in `@repo/shared-types` using Zod. 
 - `UpdateStatusRequestSchema`
 - `RunStatusSchema`
 - `KBReferenceSchema`
+- `SimilarCasesRequestSchema`, `SimilarCaseSchema`, `SimilarCasesResultSchema`
+- `ApplySimilarCaseRequestSchema`

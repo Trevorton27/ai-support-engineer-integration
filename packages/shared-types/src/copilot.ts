@@ -12,6 +12,7 @@ export const AISuggestionKindEnum = z.enum([
   'draft_internal_note',
   'draft_escalation',
   'chat',
+  'similar_cases',
 ]);
 export type AISuggestionKind = z.infer<typeof AISuggestionKindEnum>;
 
@@ -64,6 +65,33 @@ export const ChatRequestSchema = z.object({
 export const UpdateStatusRequestSchema = z.object({
   ticketId: z.string().min(1),
   status: z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']),
+});
+
+// Similar Cases (Phase B)
+export const SimilarCasesRequestSchema = z.object({
+  ticketId: z.string().min(1),
+  productArea: z.string().optional(),
+  limit: z.number().int().min(1).max(10).optional(),
+});
+
+export const SimilarCaseSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  productArea: z.string(),
+  status: z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']),
+  score: z.number().min(0).max(1),
+  resolution: z.string().nullable(),
+});
+export type SimilarCase = z.infer<typeof SimilarCaseSchema>;
+
+export const SimilarCasesResultSchema = z.object({
+  cases: z.array(SimilarCaseSchema),
+});
+export type SimilarCasesResult = z.infer<typeof SimilarCasesResultSchema>;
+
+export const ApplySimilarCaseRequestSchema = z.object({
+  ticketId: z.string().min(1),
+  matchedTicketId: z.string().min(1),
 });
 
 export const FeedbackRequestSchema = z.object({
