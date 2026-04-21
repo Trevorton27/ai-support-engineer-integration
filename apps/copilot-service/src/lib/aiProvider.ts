@@ -175,7 +175,7 @@ Return JSON: { "steps": ["step1", "step2", ...] }`;
 
 export async function draftReply(
   ticket: TicketSnapshot,
-  tone: 'professional' | 'friendly' | 'concise' | 'surfer',
+  tone: 'professional' | 'friendly' | 'concise' | 'surfer' | 'yoda',
 ): Promise<DraftReplyResult> {
   // Redact sensitive data
   const redacted = redactTicketSnapshot(ticket);
@@ -185,6 +185,7 @@ export async function draftReply(
     friendly: 'warm and conversational',
     concise: 'brief and to-the-point',
     surfer: 'like a stereotypical California surfer dude — use surfing slang, say things like "dude", "bro", "totally", "gnarly", "stoked", "hang ten", "radical", "no worries", and keep the vibe super chill and laid-back',
+    yoda: 'in the syntax and tone of Yoda from Star Wars — invert sentence structure so the object or predicate comes first (e.g., "Fixed, your issue will be"), use archaic phrasing, refer to the customer with wisdom, and end with an encouragement in Yoda\'s manner',
   };
 
   const latestMessage =
@@ -229,6 +230,8 @@ const TONE_INSTRUCTIONS: Record<string, string> = {
   concise: 'brief and to-the-point',
   surfer:
     'like a stereotypical California surfer dude — use surfing slang, say things like "dude", "bro", "totally", "gnarly", "stoked", "hang ten", "radical", "no worries", and keep the vibe super chill and laid-back',
+  yoda:
+    'in the syntax and tone of Yoda from Star Wars — invert sentence structure so the object or predicate comes first (e.g., "Fixed, your issue will be"), use archaic phrasing, refer to the customer with wisdom, and end with an encouragement in Yoda\'s manner',
 };
 
 function formatTicketContext(redacted: RedactedTicket): string {
@@ -395,7 +398,7 @@ export async function draftCustomerReply(
   ticket: TicketSnapshot,
   analysis: AnalysisResult | null,
   analysisId: string | null,
-  tone: 'professional' | 'friendly' | 'concise' | 'surfer',
+  tone: 'professional' | 'friendly' | 'concise' | 'surfer' | 'yoda',
 ): Promise<DraftCustomerReplyResult> {
   const redacted = redactTicketSnapshot(ticket);
   const prompt = buildCustomerReplyPrompt(redacted, analysis, tone);

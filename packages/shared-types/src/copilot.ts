@@ -16,7 +16,7 @@ export const AISuggestionKindEnum = z.enum([
 ]);
 export type AISuggestionKind = z.infer<typeof AISuggestionKindEnum>;
 
-export const ToneEnum = z.enum(['professional', 'friendly', 'concise', 'surfer']);
+export const ToneEnum = z.enum(['professional', 'friendly', 'concise', 'surfer', 'yoda']);
 export type Tone = z.infer<typeof ToneEnum>;
 
 export const DraftTypeEnum = z.enum(['customer_reply', 'internal_note', 'escalation']);

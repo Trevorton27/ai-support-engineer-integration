@@ -66,7 +66,7 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
   const [currentJob, setCurrentJob] = useState<SuggestionState | null>(null);
   const [result, setResult] = useState<any>(null);
   const [resultType, setResultType] = useState<string>('');
-  const [tone, setTone] = useState<'professional' | 'friendly' | 'concise' | 'surfer'>(
+  const [tone, setTone] = useState<'professional' | 'friendly' | 'concise' | 'surfer' | 'yoda'>(
     'professional',
   );
   const [chatInput, setChatInput] = useState('');
@@ -932,7 +932,8 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
                       | 'professional'
                       | 'friendly'
                       | 'concise'
-                      | 'surfer',
+                      | 'surfer'
+                      | 'yoda',
                   )
                 }
                 className="rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
@@ -941,6 +942,7 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
                 <option value="friendly">Friendly</option>
                 <option value="concise">Concise</option>
                 <option value="surfer">Surfer</option>
+                <option value="yoda">Yoda</option>
               </select>
             </div>
           )}
