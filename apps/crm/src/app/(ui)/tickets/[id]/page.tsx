@@ -101,7 +101,7 @@ export default async function TicketDetailPage({
           </div>
 
           {/* Messages */}
-          <div className="space-y-3">
+          <section aria-label="Conversation" className="space-y-3">
             <h2 className="text-sm font-semibold text-gray-600 dark:text-gray-400">
               Conversation ({ticket._count.messages})
             </h2>
@@ -115,34 +115,39 @@ export default async function TicketDetailPage({
                   <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                     {msg.authorType}
                   </span>
-                  <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">
+                  <time
+                    dateTime={msg.createdAt.toISOString()}
+                    className="ml-auto text-xs text-gray-400 dark:text-gray-500"
+                  >
                     {new Date(msg.createdAt).toLocaleString()}
-                  </span>
+                  </time>
                 </div>
                 <p className="whitespace-pre-wrap text-gray-800 dark:text-gray-200">{msg.content}</p>
               </div>
             ))}
-          </div>
+          </section>
 
           {/* Add message form */}
-          <form action={addMessage} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
+          <form action={addMessage} aria-label="Add reply" className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
             <input type="hidden" name="ticketId" value={ticket.id} />
             <div className="mb-3 flex gap-3">
               <div className="flex-1">
-                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                <label htmlFor="msg-author-name" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
                   Author name
                 </label>
                 <input
+                  id="msg-author-name"
                   name="authorName"
                   defaultValue="Agent"
                   className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                <label htmlFor="msg-author-type" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
                   Author type
                 </label>
                 <select
+                  id="msg-author-type"
                   name="authorType"
                   defaultValue="AGENT"
                   className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
@@ -153,7 +158,9 @@ export default async function TicketDetailPage({
                 </select>
               </div>
             </div>
+            <label htmlFor="msg-content" className="sr-only">Reply message</label>
             <textarea
+              id="msg-content"
               name="content"
               required
               rows={3}
@@ -176,14 +183,15 @@ export default async function TicketDetailPage({
           {/* Status */}
           <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
             <h3 className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">Status</h3>
-            <form>
+            <form aria-label="Update ticket status">
               <input type="hidden" name="ticketId" value={ticket.id} />
-              <div className="flex flex-col gap-2">
-                {['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map((s) => (
+              <div className="flex flex-col gap-2" role="group" aria-label="Status options">
+                {(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const).map((s) => (
                   <button
                     key={s}
                     formAction={updateTicketStatus.bind(null, ticket.id, s)}
                     type="submit"
+                    aria-pressed={ticket.status === s}
                     className={`rounded px-3 py-1.5 text-left text-sm transition-colors ${
                       ticket.status === s
                         ? (STATUS_COLORS[s] ?? 'bg-gray-100 text-gray-700') + ' font-semibold'

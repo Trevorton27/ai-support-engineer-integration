@@ -379,6 +379,8 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
     return (
       <div className="flex items-center gap-2">
         <div
+          role="status"
+          aria-live="polite"
           className={`inline-block rounded px-2 py-1 text-xs ${stateColors[currentJob.state]}`}
           data-testid="copilot-state"
         >
@@ -689,7 +691,9 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
             </span>
           )}
         </div>
+        <label htmlFor="draft-edit-textarea" className="sr-only">{label}</label>
         <textarea
+          id="draft-edit-textarea"
           data-testid="draft-edit-textarea"
           value={draftEditText}
           onChange={(e) => {
@@ -697,6 +701,7 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
             setDraftSaved(false);
           }}
           rows={10}
+          aria-label={label}
           className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
         />
         <div className="flex flex-wrap gap-2">
@@ -754,6 +759,9 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
     if (isLoading && !result) {
       return (
         <div
+          role="status"
+          aria-label="Loading AI response"
+          aria-busy="true"
           className="animate-pulse space-y-2 rounded-md bg-gray-50 p-3 dark:bg-gray-900"
           data-testid="result-skeleton"
         >
@@ -809,10 +817,10 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
 
       {/* ── Ticket Status ── */}
       <div className="space-y-2">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        <h4 id="ticket-status-label" className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           Ticket Status
         </h4>
-        <div className="flex gap-1">
+        <div className="flex gap-1" role="group" aria-labelledby="ticket-status-label">
           {(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const).map(
             (s) => {
               const isActive = ticketStatus === s;
@@ -835,6 +843,7 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
                   key={s}
                   onClick={() => handleStatusChange(s)}
                   disabled={statusUpdating}
+                  aria-pressed={isActive}
                   className={`flex-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${colorMap[s]}`}
                 >
                   {s.replace('_', ' ')}
@@ -894,10 +903,11 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
         </h4>
         <div className="flex gap-2">
           <div className="flex-1">
-            <label className="mb-0.5 block text-[10px] font-medium text-gray-400 dark:text-gray-500">
+            <label htmlFor="draft-type-select" className="mb-0.5 block text-[10px] font-medium text-gray-400 dark:text-gray-500">
               Post Type
             </label>
             <select
+              id="draft-type-select"
               value={draftType}
               onChange={(e) => setDraftType(e.target.value as DraftType)}
               data-testid="draft-type-select"
@@ -910,10 +920,11 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
           </div>
           {draftType === 'customer_reply' && (
             <div>
-              <label className="mb-0.5 block text-[10px] font-medium text-gray-400 dark:text-gray-500">
+              <label htmlFor="draft-tone-select" className="mb-0.5 block text-[10px] font-medium text-gray-400 dark:text-gray-500">
                 Post Tone
               </label>
               <select
+                id="draft-tone-select"
                 value={tone}
                 onChange={(e) =>
                   setTone(
@@ -948,11 +959,13 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
 
       {/* ── Ask Me a Question ── */}
       <div className="space-y-2">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        <h4 id="chat-section-label" className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           Ask Me a Question
         </h4>
-        <div className="flex gap-2">
+        <div className="flex gap-2" role="search" aria-labelledby="chat-section-label">
+          <label htmlFor="chat-input" className="sr-only">Ask Copilot a question</label>
           <input
+            id="chat-input"
             type="text"
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
@@ -967,6 +980,7 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
           <button
             onClick={handleChat}
             disabled={isLoading || !chatInput.trim()}
+            aria-label="Submit question to Copilot"
             className="rounded-md bg-gray-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 dark:bg-gray-200 dark:text-gray-900 dark:hover:bg-gray-300"
           >
             Ask
@@ -976,6 +990,7 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
 
       {currentJob?.state === 'error' && (
         <div
+          role="alert"
           className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900 dark:text-red-200"
           data-testid="copilot-error"
         >
@@ -1045,6 +1060,7 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
                       applyingCaseId === c.id
                     }
                     data-testid="apply-similar-button"
+                    aria-label={`Apply resolution pattern from: ${c.title}`}
                     className="shrink-0 rounded-md bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-400"
                   >
                     {applyingCaseId === c.id ? 'Applying...' : 'Apply'}
@@ -1057,23 +1073,27 @@ export function CopilotPanel({ snapshot }: CopilotPanelProps) {
       </div>
 
       {/* Toast notifications */}
-      {toasts.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2" data-testid="toast-container">
-          {toasts.map((t) => (
-            <div
-              key={t.id}
-              data-testid="toast"
-              className={`rounded-md px-3 py-2 text-sm font-medium shadow-lg ${
-                t.type === 'success'
-                  ? 'bg-gray-800 text-white dark:bg-gray-100 dark:text-gray-900'
-                  : 'bg-red-600 text-white dark:bg-red-500'
-              }`}
-            >
-              {t.message}
-            </div>
-          ))}
-        </div>
-      )}
+      <div
+        aria-live="polite"
+        aria-atomic="false"
+        className="fixed bottom-4 right-4 z-50 flex flex-col gap-2"
+        data-testid="toast-container"
+      >
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            role={t.type === 'error' ? 'alert' : 'status'}
+            data-testid="toast"
+            className={`rounded-md px-3 py-2 text-sm font-medium shadow-lg ${
+              t.type === 'success'
+                ? 'bg-gray-800 text-white dark:bg-gray-100 dark:text-gray-900'
+                : 'bg-red-600 text-white dark:bg-red-500'
+            }`}
+          >
+            {t.message}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

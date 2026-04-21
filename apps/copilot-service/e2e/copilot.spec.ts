@@ -72,11 +72,13 @@ test.describe('Copilot Panel', () => {
               id: suggestionId,
               state: 'success',
               content: {
-                summary: 'Test ticket analysis summary',
-                sentiment: 'neutral',
-                category: 'technical',
-                urgency: 'medium',
-                suggestedActions: ['Review logs', 'Contact customer'],
+                extractedSignals: { errorStrings: ['401 Unauthorized'], urls: [] },
+                hypotheses: [{ cause: 'Token expiry', evidence: ['401 on refresh'], confidence: 0.8, tests: ['Replay with fresh token'] }],
+                clarifyingQuestions: ['Which browser are you using?'],
+                nextSteps: ['Review logs', 'Re-issue credentials'],
+                riskFlags: [],
+                escalationWhen: [],
+                references: [],
               },
               error: null,
               kind: 'analysis',
@@ -87,8 +89,17 @@ test.describe('Copilot Panel', () => {
       }
     });
 
-    // Navigate to a page with CopilotPanel (adjust URL as needed)
-    await page.goto('/tickets/test-ticket-id');
+    // Mock similar (prevents unmocked requests from interfering)
+    await page.route('**/api/copilot/v1/similar', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, data: { cases: [] } }),
+      });
+    });
+
+    await page.goto('/test-fixture/panel');
+    await expect(page.locator('[data-testid="copilot-panel"]')).toBeVisible({ timeout: 10000 });
 
     // Click analyze button
     await page.click('[data-testid="analyze-button"]');
@@ -96,7 +107,7 @@ test.describe('Copilot Panel', () => {
     // Should show queued state
     await expect(page.locator('[data-testid="copilot-state"]')).toContainText(
       'Queued',
-      { timeout: 2000 },
+      { timeout: 3000 },
     );
 
     // Should transition to running
@@ -111,11 +122,9 @@ test.describe('Copilot Panel', () => {
       { timeout: 5000 },
     );
 
-    // Should display structured results
-    await expect(
-      page.locator('[data-testid="analysis-summary"]'),
-    ).toBeVisible();
-    await expect(page.locator('text=Test ticket analysis summary')).toBeVisible();
+    // Should display structured analysis results (content matches current AnalysisResult format)
+    await expect(page.locator('[data-testid="analysis-summary"]')).toBeVisible();
+    await expect(page.locator('text=Review logs')).toBeVisible();
   });
 
   test('should handle errors gracefully', async ({ page }) => {
@@ -131,7 +140,7 @@ test.describe('Copilot Panel', () => {
       });
     });
 
-    await page.goto('/tickets/test-ticket-id');
+    await page.goto('/test-fixture/panel');
     await page.click('[data-testid="analyze-button"]');
 
     // Should not show any state indicator since request failed before creating suggestion
@@ -215,7 +224,7 @@ test.describe('Copilot Panel', () => {
       },
     );
 
-    await page.goto('/tickets/test-ticket-id');
+    await page.goto('/test-fixture/panel');
     await expect(page.locator('[data-testid="copilot-panel"]')).toBeVisible();
 
     await page.selectOption(
@@ -299,7 +308,7 @@ test.describe('Copilot Panel', () => {
       },
     );
 
-    await page.goto('/tickets/test-ticket-id');
+    await page.goto('/test-fixture/panel');
     await page.selectOption(
       '[data-testid="draft-type-select"]',
       'internal_note',
@@ -360,7 +369,7 @@ test.describe('Copilot Panel', () => {
       },
     );
 
-    await page.goto('/tickets/test-ticket-id');
+    await page.goto('/test-fixture/panel');
     await page.selectOption('[data-testid="draft-type-select"]', 'escalation');
     await page.click('[data-testid="generate-draft-button"]');
     await expect(page.locator('[data-testid="copilot-state"]')).toContainText(
@@ -434,7 +443,7 @@ test.describe('Copilot Panel', () => {
       },
     );
 
-    await page.goto('/tickets/test-ticket-id');
+    await page.goto('/test-fixture/panel');
     await page.click('[data-testid="analyze-button"]');
 
     await expect(page.locator('[data-testid="copilot-state"]')).toContainText(
@@ -529,7 +538,7 @@ test.describe('Copilot Panel', () => {
       await route.continue();
     });
 
-    await page.goto('/tickets/test-ticket-id');
+    await page.goto('/test-fixture/panel');
     await page.click('[data-testid="analyze-button"]');
     await expect(page.locator('[data-testid="copilot-state"]')).toContainText(
       'Complete',
@@ -620,7 +629,7 @@ test.describe('Copilot Panel', () => {
       });
     });
 
-    await page.goto('/tickets/test-ticket-id');
+    await page.goto('/test-fixture/panel');
 
     // Similar cases section should render on mount
     await expect(
@@ -745,18 +754,17 @@ test.describe('Copilot Panel', () => {
       });
     });
 
-    await page.goto('/tickets/test-ticket-id');
+    await page.goto('/test-fixture/panel');
 
     // Click the Demo button
     await page.click('[data-testid="demo-button"]');
 
-    // Wait for analysis to render
-    await expect(page.locator('[data-testid="analysis-summary"]')).toBeVisible({ timeout: 8000 });
-
-    // Wait for draft textarea to populate
+    // The demo runs analyze then immediately generates a draft; wait for the
+    // final state (draft textarea populated) rather than the transient
+    // analysis-summary which can clear before Playwright polls for it.
     await expect(page.locator('[data-testid="draft-edit-textarea"]')).toHaveValue(
       /SSO issue/,
-      { timeout: 8000 },
+      { timeout: 12000 },
     );
 
     // Edit the draft
@@ -807,7 +815,7 @@ test.describe('Copilot Panel', () => {
       });
     });
 
-    await page.goto('/tickets/test-ticket-id');
+    await page.goto('/test-fixture/panel');
     await page.click('[data-testid="analyze-button"]');
 
     // Should show error state

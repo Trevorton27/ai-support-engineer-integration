@@ -14,10 +14,12 @@ export default function NewTicketPage() {
       <form action={createTicket} className="space-y-5 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-950">
         {/* Title */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Title <span className="text-red-500">*</span>
+          <label htmlFor="new-ticket-title" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Title <span className="text-red-500" aria-hidden="true">*</span>
+            <span className="sr-only">(required)</span>
           </label>
           <input
+            id="new-ticket-title"
             name="title"
             required
             maxLength={200}
@@ -28,10 +30,12 @@ export default function NewTicketPage() {
 
         {/* Description */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Description <span className="text-red-500">*</span>
+          <label htmlFor="new-ticket-description" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Description <span className="text-red-500" aria-hidden="true">*</span>
+            <span className="sr-only">(required)</span>
           </label>
           <textarea
+            id="new-ticket-description"
             name="description"
             required
             rows={5}
@@ -43,10 +47,12 @@ export default function NewTicketPage() {
         {/* Customer */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Customer Name <span className="text-red-500">*</span>
+            <label htmlFor="new-ticket-customer-name" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Customer Name <span className="text-red-500" aria-hidden="true">*</span>
+              <span className="sr-only">(required)</span>
             </label>
             <input
+              id="new-ticket-customer-name"
               name="customerName"
               required
               placeholder="Jane Smith"
@@ -54,10 +60,11 @@ export default function NewTicketPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="new-ticket-customer-org" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Customer Org
             </label>
             <input
+              id="new-ticket-customer-org"
               name="customerOrg"
               placeholder="Acme Corp (optional)"
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:placeholder-gray-500"
@@ -68,10 +75,11 @@ export default function NewTicketPage() {
         {/* Product area / Priority / Channel */}
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="new-ticket-product-area" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Product Area
             </label>
             <input
+              id="new-ticket-product-area"
               name="productArea"
               placeholder="e.g. Billing"
               defaultValue="General"
@@ -79,10 +87,11 @@ export default function NewTicketPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="new-ticket-priority" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Priority
             </label>
             <select
+              id="new-ticket-priority"
               name="priority"
               defaultValue="MEDIUM"
               className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
@@ -94,10 +103,11 @@ export default function NewTicketPage() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="new-ticket-channel" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Channel
             </label>
             <select
+              id="new-ticket-channel"
               name="channel"
               defaultValue=""
               className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"

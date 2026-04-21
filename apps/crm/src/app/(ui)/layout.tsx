@@ -10,7 +10,7 @@ export default function UILayout({ children }: { children: React.ReactNode }) {
             Sample CRM
           </Link>
           <div className="flex items-center gap-2">
-            <nav className="flex gap-5 text-sm text-gray-600 dark:text-gray-400">
+            <nav aria-label="Main navigation" className="flex gap-5 text-sm text-gray-600 dark:text-gray-400">
               <Link href="/tickets" className="hover:text-gray-900 dark:hover:text-white">
                 Tickets
               </Link>

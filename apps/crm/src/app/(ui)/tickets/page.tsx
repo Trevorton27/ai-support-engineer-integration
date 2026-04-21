@@ -86,14 +86,18 @@ export default async function TicketsPage({
       </div>
 
       {/* Filters */}
-      <form method="GET" className="mb-5 flex flex-wrap gap-3">
+      <form method="GET" className="mb-5 flex flex-wrap gap-3" role="search" aria-label="Filter tickets">
+        <label htmlFor="tickets-search" className="sr-only">Search tickets</label>
         <input
+          id="tickets-search"
           name="q"
           defaultValue={filters.q}
           placeholder="Search title or customer…"
           className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:placeholder-gray-500"
         />
+        <label htmlFor="tickets-status" className="sr-only">Filter by status</label>
         <select
+          id="tickets-status"
           name="status"
           defaultValue={filters.status ?? ''}
           className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
@@ -104,7 +108,9 @@ export default async function TicketsPage({
           <option value="RESOLVED">Resolved</option>
           <option value="CLOSED">Closed</option>
         </select>
+        <label htmlFor="tickets-priority" className="sr-only">Filter by priority</label>
         <select
+          id="tickets-priority"
           name="priority"
           defaultValue={filters.priority ?? ''}
           className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
@@ -126,7 +132,7 @@ export default async function TicketsPage({
             href="/tickets"
             className="rounded-md px-3 py-1.5 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
           >
-            Clear
+            Clear filters
           </Link>
         )}
       </form>
@@ -153,17 +159,17 @@ export default async function TicketsPage({
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+          <table className="w-full text-sm" aria-label="Tickets">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-                <th className="px-4 py-3">Title</th>
-                <th className="px-4 py-3">Customer</th>
-                <th className="px-4 py-3">Area</th>
-                <th className="px-4 py-3">Priority</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Msgs</th>
-                <th className="px-4 py-3">Created</th>
+                <th scope="col" className="px-4 py-3">Title</th>
+                <th scope="col" className="px-4 py-3">Customer</th>
+                <th scope="col" className="px-4 py-3">Area</th>
+                <th scope="col" className="px-4 py-3">Priority</th>
+                <th scope="col" className="px-4 py-3">Status</th>
+                <th scope="col" className="px-4 py-3">Msgs</th>
+                <th scope="col" className="px-4 py-3">Created</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">

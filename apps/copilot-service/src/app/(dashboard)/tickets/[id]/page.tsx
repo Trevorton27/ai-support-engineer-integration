@@ -85,7 +85,7 @@ export default async function TicketDetailPage({
 
           {/* Messages thread */}
           {ticket.messages.length > 0 && (
-            <div className="space-y-3">
+            <section aria-label="Conversation" className="space-y-3">
               <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Conversation ({ticket.messages.length})
               </h2>
@@ -115,7 +115,7 @@ export default async function TicketDetailPage({
                   </p>
                 </div>
               ))}
-            </div>
+            </section>
           )}
         </div>
 

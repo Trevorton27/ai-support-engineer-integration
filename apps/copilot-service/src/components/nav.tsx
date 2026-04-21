@@ -14,7 +14,7 @@ export function Nav() {
   const pathname = usePathname();
 
   return (
-    <nav className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+    <nav aria-label="Main navigation" className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
         <div className="flex items-center gap-6">
           <Link href="/tickets" className="text-lg font-bold">
@@ -25,6 +25,7 @@ export function Nav() {
               <Link
                 key={link.href}
                 href={link.href}
+                aria-current={pathname === link.href ? 'page' : undefined}
                 className={`text-sm font-medium transition-colors hover:text-black dark:hover:text-white ${
                   pathname === link.href
                     ? 'text-black dark:text-white'
