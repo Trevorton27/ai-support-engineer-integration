@@ -53,7 +53,7 @@ export async function suggestNextStepsAsync(ticketId: string) {
 
 export async function draftReplyAsync(
   ticketId: string,
-  tone: 'professional' | 'friendly' | 'concise' | 'surfer',
+  tone: 'professional' | 'friendly' | 'concise' | 'surfer' | 'yoda',
 ) {
   return copilotFetch('/draft-reply', {
     method: 'POST',
@@ -64,7 +64,7 @@ export async function draftReplyAsync(
 export async function generateDraftAsync(
   ticketId: string,
   draftType: 'customer_reply' | 'internal_note' | 'escalation',
-  tone?: 'professional' | 'friendly' | 'concise' | 'surfer',
+  tone?: 'professional' | 'friendly' | 'concise' | 'surfer' | 'yoda',
 ) {
   return copilotFetch('/draft-reply', {
     method: 'POST',
