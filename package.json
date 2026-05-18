@@ -7,7 +7,10 @@
     "dev:copilot": "pnpm --dir apps/copilot-service run dev",
     "test": "pnpm --dir apps/copilot-service run test",
     "test:e2e": "pnpm --dir apps/copilot-service run test:e2e",
-    "build": "pnpm --dir apps/crm run build && pnpm --dir apps/copilot-service run build"
+    "build": "pnpm --dir apps/crm run build && pnpm --dir apps/copilot-service run build",
+    "deploy:crm": "VERCEL_ORG_ID=team_mS6hbTsee4qyuEABIGPJHv7U VERCEL_PROJECT_ID=prj_piVl9mfU5k2fIrPOp774iTTWel0d vercel --prod",
+    "deploy:copilot": "VERCEL_ORG_ID=team_mS6hbTsee4qyuEABIGPJHv7U VERCEL_PROJECT_ID=prj_vanxkAvJcqIN0ToUMVdZTsPFLfbS vercel --prod",
+    "deploy:all": "pnpm run deploy:crm && pnpm run deploy:copilot"
   },
   "devDependencies": {
     "@tailwindcss/oxide-linux-x64-gnu": "^4.2.2",

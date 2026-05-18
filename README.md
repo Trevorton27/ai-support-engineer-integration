@@ -43,6 +43,28 @@ graph TD
 
 ---
 
+## Apps
+
+| | `apps/crm` | `apps/copilot-service` |
+|---|---|---|
+| **Vercel project** | `crm` | `copilot-service` |
+| **Port** | 3000 | 3001 |
+| **Purpose** | Ticket management — CRUD, status, events, attachments | AI copilot UI — async LLM pipeline, RAG retrieval |
+| **Owns the UI?** | No (API only) | Yes — agents work here |
+| **Database access** | Direct (Prisma) | Direct (Prisma) + fetches tickets via CRM API |
+| **OpenAI** | No | Yes — `gpt-4o-mini` + `text-embedding-3-small` |
+| **pgvector** | No | Yes — HNSW index on tickets + KB articles |
+| **Auth** | Clerk (JWT verification on all routes) | Clerk (JWT verification on all routes) |
+| **Testing** | Vitest (unit) | Vitest (unit) + Playwright (E2E) |
+| **Key env vars** | `DATABASE_URL`, `CLERK_*` | `DATABASE_URL`, `CLERK_*`, `OPENAI_API_KEY`, `CRM_API_BASE_URL` |
+| **Extra deps** | `lightningcss` | `openai`, `@playwright/test` |
+
+### Relationship
+
+`copilot-service` is the consumer; `crm` is the data source. The copilot fetches ticket data by calling the CRM's REST API (`CRM_API_BASE_URL`), then runs its own AI pipeline and writes results (`AISuggestion` records) to the shared database. Neither app imports the other — communication is HTTP only.
+
+---
+
 ## Features
 
 | Feature | Description |
@@ -50,7 +72,7 @@ graph TD
 | **Analyze Ticket** | Extracts signals, hypotheses, clarifying questions, and next steps from a ticket thread |
 | **Similar Cases** | Embeds the ticket and cosine-searches resolved tickets; agents can apply a past resolution as a draft |
 | **Suggest Next Steps** | Generates 3–5 actionable steps for the support agent |
-| **Draft Reply** | Writes a customer-facing reply in a chosen tone (Professional · Friendly · Concise · Surfer) or an internal note / escalation |
+| **Draft Reply** | Writes a customer-facing reply in a chosen tone (Professional · Friendly · Concise · Surfer · Yoda) or an internal note / escalation |
 | **Ask Copilot** | Free-form chat about a ticket with conversation memory |
 | **Knowledge Base** | pgvector RAG pipeline — KB articles are embedded and retrieved alongside analysis results |
 | **Async execution** | All LLM jobs are queued immediately; UI polls for state transitions (queued → running → success / error) |
