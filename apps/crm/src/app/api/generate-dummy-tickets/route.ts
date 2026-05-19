@@ -10,5 +10,5 @@ export async function POST() {
 
   await generateDummyTickets(10);
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, data: {} });
 }
