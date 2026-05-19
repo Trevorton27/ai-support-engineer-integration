@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getTickets } from '@/lib/crmClient';
+import { generateDummyTickets } from '@/lib/ticketActions';
 
 const statusColors: Record<string, string> = {
   OPEN: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
@@ -39,12 +40,30 @@ export default async function TicketsPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Tickets</h1>
-        <span className="text-sm text-gray-500">{tickets.length} total</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">{tickets.length} total</span>
+          <form action={generateDummyTickets}>
+            <button
+              type="submit"
+              className="rounded-md border border-dashed border-gray-400 bg-white px-3 py-1.5 text-sm text-gray-600 hover:border-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-gray-400 dark:hover:bg-gray-800"
+            >
+              Generate 10 dummy tickets
+            </button>
+          </form>
+        </div>
       </div>
 
       {tickets.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center dark:border-gray-700">
           <p className="text-gray-500">No tickets found.</p>
+          <form action={generateDummyTickets} className="mt-4">
+            <button
+              type="submit"
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              Generate dummy tickets
+            </button>
+          </form>
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">

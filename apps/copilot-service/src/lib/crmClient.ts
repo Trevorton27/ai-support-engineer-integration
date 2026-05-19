@@ -150,3 +150,9 @@ export async function addTicketMessage(
     },
   );
 }
+
+export async function generateDummyTickets(): Promise<CRMResult<null>> {
+  const result = await crmFetch('/generate-dummy-tickets', z.object({}), { method: 'POST' });
+  if (result.ok) return { ok: true, data: null };
+  return result;
+}
