@@ -68,12 +68,12 @@ export default async function TicketsPage({
           </p>
         </div>
         <div className="flex gap-2">
-          <form action={generateDummyTickets.bind(null, 5)}>
+          <form action={generateDummyTickets.bind(null, 10)}>
             <button
               type="submit"
               className="rounded-md border border-dashed border-gray-400 bg-white px-3 py-1.5 text-sm text-gray-600 hover:border-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-gray-400 dark:hover:bg-gray-800"
             >
-              Generate 5 dummy tickets
+              Generate 10 dummy tickets
             </button>
           </form>
           <Link
@@ -142,7 +142,7 @@ export default async function TicketsPage({
         <div className="rounded-lg border border-dashed border-gray-300 p-16 text-center dark:border-gray-700">
           <p className="text-gray-400 dark:text-gray-500">No tickets yet.</p>
           <div className="mt-4 flex justify-center gap-3">
-            <form action={generateDummyTickets.bind(null, 5)}>
+            <form action={generateDummyTickets.bind(null, 10)}>
               <button
                 type="submit"
                 className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
