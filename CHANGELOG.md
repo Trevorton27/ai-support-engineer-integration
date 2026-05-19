@@ -4,6 +4,13 @@ All notable changes to this project are documented here, organized by build phas
 
 ---
 
+## Post-Launch Fixes & Additions (2026-05-19)
+
+### Added
+- **Copilot service** — "Generate 10 dummy tickets" button on the tickets page (header + empty state), mirroring the CRM feature; implemented via a new `POST /api/generate-dummy-tickets` CRM route that proxies the existing server action, a `generateDummyTickets` helper in `crmClient`, and a Server Action wrapper in the copilot-service
+
+---
+
 ## Deployment Fixes (2026-05-19)
 
 ### Fixed
