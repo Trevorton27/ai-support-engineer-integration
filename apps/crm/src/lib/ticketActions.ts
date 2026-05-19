@@ -258,46 +258,44 @@ export async function generateDummyTickets(count: number = 10) {
     .sort(() => Math.random() - 0.5)
     .slice(0, Math.min(count, DUMMY_TEMPLATES.length));
 
-  await prisma.$transaction(async (tx) => {
-    for (const tmpl of selected) {
-      const statuses = ['OPEN', 'OPEN', 'OPEN', 'IN_PROGRESS', 'RESOLVED'] as const;
-      const status = statuses[Math.floor(Math.random() * statuses.length)];
+  for (const tmpl of selected) {
+    const statuses = ['OPEN', 'OPEN', 'OPEN', 'IN_PROGRESS', 'RESOLVED'] as const;
+    const status = statuses[Math.floor(Math.random() * statuses.length)];
 
-      const ticket = await tx.ticket.create({
-        data: {
-          title: tmpl.title,
-          description: tmpl.description,
-          status,
-          priority: tmpl.priority as any,
-          channel: tmpl.channel as any,
-          customerName: tmpl.customerName,
-          customerOrg: tmpl.customerOrg ?? null,
-          productArea: tmpl.productArea,
-          orgId: org.id,
-          createdById: user.id,
-        },
-      });
+    const ticket = await prisma.ticket.create({
+      data: {
+        title: tmpl.title,
+        description: tmpl.description,
+        status,
+        priority: tmpl.priority as any,
+        channel: tmpl.channel as any,
+        customerName: tmpl.customerName,
+        customerOrg: tmpl.customerOrg ?? null,
+        productArea: tmpl.productArea,
+        orgId: org.id,
+        createdById: user.id,
+      },
+    });
 
-      for (const msg of tmpl.messages) {
-        await tx.ticketMessage.create({
-          data: {
-            ticketId: ticket.id,
-            authorType: msg.authorType as any,
-            authorName: msg.authorType === 'CUSTOMER' ? tmpl.customerName : 'Agent',
-            content: msg.content,
-          },
-        });
-      }
-
-      await tx.ticketEvent.create({
+    for (const msg of tmpl.messages) {
+      await prisma.ticketMessage.create({
         data: {
           ticketId: ticket.id,
-          type: 'TICKET_CREATED',
-          payload: { title: ticket.title, priority: ticket.priority, customerName: ticket.customerName },
+          authorType: msg.authorType as any,
+          authorName: msg.authorType === 'CUSTOMER' ? tmpl.customerName : 'Agent',
+          content: msg.content,
         },
       });
     }
-  });
+
+    await prisma.ticketEvent.create({
+      data: {
+        ticketId: ticket.id,
+        type: 'TICKET_CREATED',
+        payload: { title: ticket.title, priority: ticket.priority, customerName: ticket.customerName },
+      },
+    });
+  }
 
   revalidatePath('/tickets');
 }

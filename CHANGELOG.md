@@ -7,6 +7,8 @@ All notable changes to this project are documented here, organized by build phas
 ## Deployment Fixes (2026-05-19)
 
 ### Fixed
+- **CRM** — "Generate dummy tickets" returning 500 in production: replaced `prisma.$transaction(async tx => ...)` with sequential `prisma.*` calls; Neon's PgBouncer (transaction mode) releases the DB connection between statements, invalidating the interactive transaction before `ticketMessage.create()` runs (Prisma `P2028`)
+- **CRM** — Removed auto-seed from `instrumentation.ts`; `execSync('npx prisma db seed')` fails in Vercel serverless (read-only filesystem, no `npx`) and crashed on every cold start when ticket count was 0. Use the "Generate dummy tickets" button or run seed locally instead
 - **CRM & copilot-service** — Added `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` env var to Vercel (Production + Preview) for both projects; the original setup used `CLERK_PUBLISHABLE_KEY` which `@clerk/nextjs` does not recognise, causing 500 on every authenticated request
 - **CRM** — Build failure: added `transpilePackages: ['@repo/shared-types']` to `next.config.ts`; without it, Next.js tried to execute raw `.ts` source from the workspace package as JavaScript, producing `SyntaxError: Invalid or unexpected token` during page data collection
 - **CRM** — Build failure: added `eslint.ignoreDuringBuilds: true` to skip the `eslint-config-next 16.x + FlatCompat` circular-reference crash (same fix already present in `copilot-service`)
