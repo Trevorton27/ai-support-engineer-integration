@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { prisma } from './prisma';
 import { getDevContext } from './devDb';
-import { authenticateRequest } from './auth';
 
 // ── Create ────────────────────────────────────────────────────────────────────
 
@@ -253,9 +252,7 @@ const DUMMY_TEMPLATES = [
 ];
 
 export async function generateDummyTickets(count: number = 10) {
-  const authResult = await authenticateRequest();
-  if ('error' in authResult) throw new Error(authResult.error);
-  const { user } = authResult;
+  const { org, user } = await getDevContext();
 
   const selected = [...DUMMY_TEMPLATES]
     .sort(() => Math.random() - 0.5)
@@ -276,7 +273,7 @@ export async function generateDummyTickets(count: number = 10) {
           customerName: tmpl.customerName,
           customerOrg: tmpl.customerOrg ?? null,
           productArea: tmpl.productArea,
-          orgId: user.orgId,
+          orgId: org.id,
           createdById: user.id,
         },
       });
