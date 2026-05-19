@@ -4,6 +4,23 @@ All notable changes to this project are documented here, organized by build phas
 
 ---
 
+## Deployment Fixes (2026-05-19)
+
+### Fixed
+- **CRM & copilot-service** — Added `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` env var to Vercel (Production + Preview) for both projects; the original setup used `CLERK_PUBLISHABLE_KEY` which `@clerk/nextjs` does not recognise, causing 500 on every authenticated request
+- **CRM** — Build failure: added `transpilePackages: ['@repo/shared-types']` to `next.config.ts`; without it, Next.js tried to execute raw `.ts` source from the workspace package as JavaScript, producing `SyntaxError: Invalid or unexpected token` during page data collection
+- **CRM** — Build failure: added `eslint.ignoreDuringBuilds: true` to skip the `eslint-config-next 16.x + FlatCompat` circular-reference crash (same fix already present in `copilot-service`)
+- **CRM** — `generate dummy tickets` button count changed from 5 → 10
+
+### Added
+- **Root** — `deploy:crm`, `deploy:copilot`, and `deploy:all` convenience scripts in root `package.json`
+- **Root** — Expanded auto-allowed permissions in `.claude/settings.local.json`: git operations, CRM build/test, Prisma migrate/db, shared-types typecheck, `vercel env`, and Vercel MCP runtime/deployment tools
+
+### Docs
+- **README** — Added apps comparison table, architecture relationship section, and Yoda tone to Draft Reply feature list
+
+---
+
 ## Phase E — Presentation Layer (2026-04-21)
 
 - Overhauled root `README.md`: current architecture, Mermaid system diagram, full setup guide, feature table, design decisions
