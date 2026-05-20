@@ -1,0 +1,1 @@
+update changelog.md and push any staged commits to github for deployment to vercel. if no changes are committed, ask user for permission to run git commit and propose a message for the commit.
